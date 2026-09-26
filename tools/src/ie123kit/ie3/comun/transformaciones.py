@@ -15,7 +15,9 @@ cambios en cada pasada. Tipos:
 2. ``insercion``: una frase oficial que no cabe en un registro (u8, ≤ 252 B) se reparte en dos cajas: la primera parte
    va en el registro del 0x301D original y la segunda en un registro nuevo al final del evet, que lee un 0x301D nuevo
    insertado justo detrás (ID original + 1). Se renumeran los IDs posteriores, los operandos tipo 4 (IDs), los
-   propietarios de la tabla de textos y los contadores de la cabecera.
+   destinos de salto de 0x6001/0x6002 (último operando, tipo 1: ID de la instrucción pareja), los propietarios de
+   la tabla de textos y los contadores de la cabecera. Sin los saltos, los bucles del guion apuntan a la
+   instrucción equivocada y el evento se queda en bucle (32021100, sorteo del FFI, 2026-09-26).
 
 Los datos (qué eventos y los cuerpos codificados, que son texto del juego) viven fuera del paquete: quien los tenga
 llama a :func:`cargar` (lista de declaraciones o ruta a un JSON ``{"declaraciones": [...]}``). Sin declaraciones
@@ -33,6 +35,8 @@ from ie123kit.ie3.comun.ssd import parse_flat_text, parse_ssd
 from ie123kit.ie3.comun.text import TextTable
 
 _REGISTRO: dict[tuple[str, int], list[dict]] = {}
+#: Opcodes de bloque cuyo último operando es el ID de su instrucción pareja (apertura 0x6001 <-> cierre 0x6002).
+SALTOS = (0x6001, 0x6002)
 
 
 def cargar(fuente) -> int:
@@ -96,7 +100,7 @@ def _renumerar(ssd: bytes, desde: int, delta: int, quitar: int | None = None, me
             struct.pack_into("<H", b, 0, i.ident + delta)
         words = (len(i.tipos) + 7) // 8
         for k, (t, v) in enumerate(zip(i.tipos, i.valores)):
-            if t == 4 and v > desde:
+            if (t == 4 or (i.opcode in SALTOS and k == len(i.tipos) - 1)) and v > desde:
                 struct.pack_into("<I", b, 8 + 4 * words + 4 * k, v + delta)
         codigo += b
         if meter is not None and i.ident == tras:
@@ -205,3 +209,33 @@ def aplicar(perfil: str | None, evento: int, ssd: bytes, evet: bytes | None):
         elif d["tipo"] == "insercion" and evet is not None and not _insercion_aplicada(ssd, d):
             ssd, evet = _aplicar_insercion(ssd, evet, d)
     return ssd, evet
+
+
+# ------------------------------------------------------------------------------------------ reparación
+
+def corregir_saltos(ssd_jp: bytes, ssd: bytes, marcas: set[int] = frozenset()) -> tuple[bytes, int]:
+    """Rehace los destinos de 0x6001/0x6002 de `ssd` a partir del SSD japonés del mismo evento.
+
+    Empareja las instrucciones por orden saltando las insertadas (0x301D de un operando con una de las `marcas`
+    de las declaraciones de inserción) y pone en cada salto el ID nuevo de su destino japonés. Sirve para candidatas construidas antes de que
+    :func:`_renumerar` desplazara los saltos. Devuelve el SSD y cuántos operandos ha cambiado.
+    """
+    jp = instrucciones(ssd_jp)
+    es = [i for i in instrucciones(ssd) if not (i.opcode == 0x301D and len(i.tipos) == 1 and i.valores[0] in marcas)]
+    nuevo, k = {}, 0
+    for i in jp:
+        if k == len(es) or es[k].opcode != i.opcode:  # el intercambio cambia el orden de tipos
+            raise ValueError("corregir_saltos: el bytecode no se corresponde con el japonés")
+        nuevo[i.ident] = es[k]
+        k += 1
+    out, cambios = bytearray(ssd), 0
+    for i in jp:
+        if i.opcode not in SALTOS:
+            continue
+        e = nuevo[i.ident]
+        destino = nuevo[i.valores[-1]].ident
+        if e.valores[-1] != destino:
+            words = (len(e.tipos) + 7) // 8
+            struct.pack_into("<I", out, e.offset + 8 + 4 * words + 4 * (len(e.tipos) - 1), destino)
+            cambios += 1
+    return bytes(out), cambios

@@ -112,3 +112,43 @@ def test_dos_inserciones_en_un_evento():
     assert T.aplicar("p", 9, s2, e2) == (s2, e2)
     s3, _e3 = T.revertir("p", 9, s2, e2)
     assert instrucciones(s3) == instrucciones(ssd)
+
+
+def _bucle_con_insercion():
+    ev = _evet(b"frase japonesa larga")
+    n = len(ev)
+    ssd = _ssd([_ins(1, 0x6001, (1, 1), (0, 4)),
+                _ins(2, 0x301D, (3,), (20,)),
+                _ins(3, 0x3002, (1,), (9,)),
+                _ins(4, 0x6002, (1, 1), (0, 1)),
+                _ins(5, 0x6001, (1, 1), (1, 6)),
+                _ins(6, 0x6002, (1, 1), (1, 5))],
+               [_texto(2, 1, f"@0,{n}".encode())])
+    d = {"tipo": "insercion", "perfil": "p", "evento": 8, "instruccion": 2, "marca": 0x7E5E,
+         "parte1_hex": b"parte uno".hex(), "parte2_hex": b"parte dos".hex()}
+    return ssd, ev, d
+
+
+def test_insercion_desplaza_los_saltos_de_bucle():
+    """Sin esto el evento 32021100 (sorteo del FFI) se quedaba en bucle tras partir una frase (2026-09-26)."""
+    ssd, ev, d = _bucle_con_insercion()
+    T.cargar([d])
+    s2, e2 = T.aplicar("p", 8, ssd, ev)
+    ins = {x.ident: x for x in instrucciones(s2)}
+    assert ins[1].valores == (0, 5) and ins[5].valores == (0, 1)
+    assert ins[6].valores == (1, 7) and ins[7].valores == (1, 6)
+    s3, _ = T.revertir("p", 8, s2, e2)
+    assert instrucciones(s3) == instrucciones(ssd)
+
+
+def test_corregir_saltos_repara_candidatas_antiguas():
+    ssd, ev, d = _bucle_con_insercion()
+    T.cargar([d])
+    bueno, e2 = T.aplicar("p", 8, ssd, ev)
+    roto = bytearray(bueno)
+    for x in instrucciones(bueno):
+        if x.opcode in T.SALTOS:
+            struct.pack_into("<I", roto, x.offset + 8 + 4 + 4, x.valores[-1] - (1 if x.valores[-1] > 2 else 0))
+    arreglado, cambios = T.corregir_saltos(ssd, bytes(roto), {0x7E5E})
+    assert arreglado == bueno and cambios == 3
+    assert T.corregir_saltos(ssd, bueno, {0x7E5E}) == (bueno, 0)
