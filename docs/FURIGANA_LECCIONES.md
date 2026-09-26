@@ -925,3 +925,42 @@ entrar.»). **Emparejar siempre por ID de cadena alineando el patrón de saltos*
   y LR en el primer sitio parcheado. **Azahar aplica no-ejecución a las páginas RW de la CRO.**
 - **Regla:** el código nuevo va solo en la región de código (de codeoff a codeoff+codesz: .text, el relleno tras .text
   o el de .rodata). Nunca en .data ni en su relleno.
+
+## ❌ Nombres cortos del IE3 de 7 o más casillas: letras fuera de las placas y cuelgue del partido (2026-09-26, #87)
+
+- **Síntoma:** en la alineación, nombres como «Sparrow», «Downtown», «Bluebel.», «Delight» o «Pinkpet.» sacan
+  letras sueltas fuera de las placas y el partido se cuelga (r7 = 0x4081 en el dibujo por fotograma, ver
+  `probe_ie3_fuego_v16_rastreo`). Bisección de datos en Azahar: con esos nombres devueltos al japonés, no se cuelga.
+- **Causa:** el nombre corto del unitbase (+0x1C, 16 B) se pinta a paso fijo, **una casilla por carácter**
+  (1 byte latino o 2 bytes Shift-JIS) y el motor admite **6 casillas** como mucho (el japonés llega a 5 de ancho
+  completo). En los tres unitbase del IE3 (inazuma3, inazuma3_ogre y ex_binder) había ~850 nombres de 7-9 casillas.
+- **Regla:** ningún nombre corto del IE3 pasa de 6 casillas. Sin abreviar: se juntan pares de letras en kanji sin
+  uso (bigramas) dibujados en FONT8, FONT12 y FONT12T; nunca la 1.ª casilla (el Registro calcula la pestaña con el
+  primer carácter) y sin tocar la marca +0x1C+15. Capa `work/ie3/shared/capas/nombres/nombres_cortos_bigramas`
+  (lógica en `ie123kit.ie3.comun.nombres_cortos_pares` y `ie123kit.nucleo.fuentes.pares_celda`): 85 pares.
+  Pendiente de ver en juego (probe_ie3_fuego_v17). Los pares de letras anchas se estrechan y se ven más borrosos.
+
+## ❌ Insertar un 0x301D sin desplazar los saltos de bucle (IE3, visto en Azahar el 2026-09-26)
+
+- **Síntoma:** tras el sorteo del FFI (evento 32021100), después de la frase de Tod, sale una caja vacía con su
+  nombre y el evento se queda en bucle. La imagen no se congela y el registro de Azahar no marca errores.
+- **Causa:** `transformaciones._renumerar` desplazaba los IDs y los operandos tipo 4, pero no el último operando
+  de 0x6001/0x6002. Ese operando es el ID de la instrucción pareja, aunque esté declarado como tipo 1. Tras cada
+  inserción, los bucles posteriores apuntaban una instrucción antes de lo debido. Afectaba a los 34 eventos con
+  frase partida (1602 saltos).
+- **Regla:** al renumerar un SSD hay que desplazar también los destinos de 0x6001/0x6002 (`SALTOS`). Para
+  candidatas antiguas: `work/ie3/shared/capas/dialogo/saltos_insercion/apply.py`
+  (`transformaciones.corregir_saltos`).
+
+## ❌ Parejas de letras (bigramas) en los nombres cortos del IE3 (v17, probado el 2026-09-26)
+
+- **Qué se probó:** escribir los nombres cortos de 7 letras o más (unitbase.dat +0x1C) con 85 códigos kanji
+  redibujados como pares de letras, para que no pasen de 6 casillas. Los códigos se añadieron también a
+  FONT8/FONT12/FONT12T.
+- **Resultado en Azahar:** la alineación se ve bien, pero el partido se cierra al terminar el primer tiempo o tras
+  un gol (PC = 0 desde LR 0x22402C, antes accesos a un objeto nulo en PC 0x1A1368).
+- **Descarte:** con las fuentes antiguas se cierra igual (descarte_r8). Con esos nombres en japonés y el resto de
+  la v17 no se cierra (descarte_r9). La causa son los códigos kanji mezclados con latín de 1 byte en el nombre
+  corto, no el dibujo de las fuentes.
+- **Regla:** en los nombres cortos del IE3 no se usan bigramas. El límite de 6 caracteres hay que resolverlo de
+  otra forma.

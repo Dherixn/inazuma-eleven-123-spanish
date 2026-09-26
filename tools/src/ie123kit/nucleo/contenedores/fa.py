@@ -305,3 +305,23 @@ def reemplazar_entrada(handle, arc, ruta, payload):
     handle.write(payload)
     handle.seek(field + 8)
     handle.write(struct.pack("<II", offset - arc.data_off, len(payload)))
+
+
+def entradas_distintas(base, otro):
+    """Rutas de `otro` que no existen en `base` o cuyo contenido difiere (orden de `otro`)."""
+    return [p for p in otro.index if not base.exists(p) or base.read(p) != otro.read(p)]
+
+
+def revertir_entradas(handle, arc, base, rutas):
+    """Devuelve cada ruta de `rutas` al contenido que tiene en `base` (bisección de fallos).
+
+    `handle` es el ``archive.fa`` de `arc` abierto en ``r+b``. Las rutas que `base` no tiene se
+    omiten. Devuelve la lista de rutas revertidas.
+    """
+    hechas = []
+    for ruta in rutas:
+        if not base.exists(ruta):
+            continue
+        reemplazar_entrada(handle, arc, ruta, base.read(ruta))
+        hechas.append(ruta)
+    return hechas

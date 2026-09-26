@@ -33,7 +33,7 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
-__all__ = ["FUENTES", "duplicados", "fuentes_de_texto", "informe", "main", "resumen", "usos"]
+__all__ = ["FUENTES", "duplicados", "en_literal", "fuentes_de_texto", "informe", "main", "resumen", "usos"]
 
 FUENTES = ("font/FONT12.bcfnt", "font/FONT8.bcfnt", "font/FONT12T.bcfnt")
 
@@ -54,6 +54,33 @@ def usos(codigos: Iterable[str], textos: Mapping[str, bytes]) -> dict[str, dict[
         for v, n in zip(valores.tolist(), cuentas.tolist()):
             res[f"{v:04X}"][nombre] = int(n)
     return res
+
+
+def en_literal(buf: bytes, codigo: bytes) -> int:
+    """Apariciones de ``codigo`` como carácter de una cadena C de texto (para binarios: code.bin, CRO).
+
+    Cuenta una aparición si la cadena entre NUL que la contiene se decodifica entera en cp932, tiene al
+    menos 2 caracteres, todos imprimibles, y el código cae en el límite de un carácter (alineado).
+    Pensado para ejecutables, donde la cuenta en crudo de :func:`usos` da casi todo por usado.
+    """
+    n = 0
+    i = buf.find(codigo)
+    while i >= 0:
+        s = buf.rfind(b"\0", 0, i) + 1
+        e = buf.find(b"\0", i)
+        seg = buf[s:e if e >= 0 else len(buf)]
+        try:
+            texto = seg.decode("cp932")
+        except UnicodeDecodeError:
+            texto = ""
+        if len(texto) >= 2 and all(ch.isprintable() for ch in texto):
+            j = 0
+            while j < i - s:
+                j += 2 if (0x81 <= seg[j] <= 0x9F or 0xE0 <= seg[j] <= 0xFC) else 1
+            if j == i - s:
+                n += 1
+        i = buf.find(codigo, i + 1)
+    return n
 
 
 def _huella(fuente: Any, gi: int) -> str:
