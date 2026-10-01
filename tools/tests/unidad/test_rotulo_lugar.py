@@ -77,3 +77,48 @@ def test_rechazos():
         R.parches(cro(), baldosas=18)
     with pytest.raises(ValidacionError, match="rotulo_r2_modificado"):
         R.localizar(cro(r2_pisado=True))
+
+
+def _qna() -> bytes:
+    n_nodos, partes_off = 13, 64 + 32 + 13 * 16
+    q = bytearray(partes_off + 3 * 128 + 16)
+    q[:8] = b" QNA 051"
+    struct.pack_into("<III", q, 8, 1, n_nodos, 3)
+    struct.pack_into("<III", q, 36, 64, 96, partes_off)
+    struct.pack_into("<4I", q, 48, *(partes_off + 3 * 128,) * 4)
+    struct.pack_into("<4I", q, 96 + 16 * 11, 2, 0, 2, 7)
+    struct.pack_into("<4I", q, 96 + 16 * 12, 1, 2, 3, 0)
+    for j, (x, sx) in enumerate(((-169.0, 1.0), (-109.0, -1.0), (32.0, 36.0))):
+        struct.pack_into("<4f", q, partes_off + 128 * j, 0, 0, 60, 20)
+        struct.pack_into("<fff", q, partes_off + 128 * j + 32, x, 109.0, sx)
+        struct.pack_into("<f", q, partes_off + 128 * j + 52, x)
+    q[-16:] = b"cola-del-qna-xyz"
+    return bytes(q)
+
+
+def test_insertar_copias_nodo_como_la_eu():
+    from ie123kit.nucleo.graficos.qna import insertar_copias_nodo
+
+    q = _qna()
+    n = insertar_copias_nodo(q, 11, [10, -29, -69])
+    assert len(n) == len(q) + 3 * 128 and n.endswith(b"cola-del-qna-xyz")
+    po = struct.unpack_from("<I", n, 44)[0]
+    xs = [struct.unpack_from("<f", n, po + 128 * j + 32)[0] for j in range(6)]
+    assert xs == [-169.0, 10.0, -29.0, -69.0, -109.0, 32.0]
+    assert struct.unpack_from("<f", n, po + 128 + 52)[0] == -109.0             # la 2.ª posición es la de la plantilla
+    assert struct.unpack_from("<I", n, 16)[0] == 6
+    assert struct.unpack_from("<4I", n, 96 + 16 * 11) == (5, 0, 5, 7)
+    assert struct.unpack_from("<4I", n, 96 + 16 * 12) == (1, 5, 6, 0)
+    assert struct.unpack_from("<I", n, 48)[0] == po + 6 * 128
+
+
+def test_placa_ampliada_en_arcv():
+    from ie123kit.nucleo.contenedores.arcv import entries, rearmar
+
+    arc = rearmar([(0x11, b"CTPK" + bytes(60)), (0x22, _qna())])
+    assert rearmar([(h, arc[o:o + t]) for o, t, h in entries(arc)]) == arc
+    nuevo, inf = R.placa_ampliada(arc)
+    assert inf["partes"] == 5 and nuevo[:4] == b"ARCV"
+    assert R.placa_ampliada(nuevo)[1]["estado"] == "ya ampliada"
+    (o, _t, _h), = [e for e in entries(nuevo) if e[2] == 0x22]
+    assert struct.unpack_from("<I", nuevo, o + 16)[0] == 6

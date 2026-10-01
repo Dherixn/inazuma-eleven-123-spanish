@@ -51,6 +51,18 @@ def _ficheros(raiz: Path) -> list[str]:
     return sorted(PurePosixPath(p.relative_to(raiz)).as_posix() for p in raiz.rglob("*") if p.is_file())
 
 
+def absolutas_sin_traducir(candidata: bytes, actualizacion: bytes, resultado: bytes,
+                           absolutas: dict[int, int]) -> list[str]:
+    """Direcciones de code.bin 1.0 que la candidata añade y que siguen tal cual en el resultado de la 1.4."""
+    import struct
+    out = []
+    for valor in absolutas:
+        w = struct.pack("<I", valor)
+        if resultado.count(w) > actualizacion.count(w) and candidata.count(w):
+            out.append(f"dirección de code.bin 0x{valor:x} sin traducir ({resultado.count(w)} apariciones)")
+    return out
+
+
 def construir_actualizacion(*, cro_base: Ruta, cro_candidata: Ruta, romfs_actualizacion: Ruta,
                             code_base: bytes, code_actualizacion: bytes, archive_base: Ruta,
                             archive_candidata: Ruta, destino: Ruta, permitir_parcial: bool = False,
@@ -84,6 +96,8 @@ def construir_actualizacion(*, cro_base: Ruta, cro_candidata: Ruta, romfs_actual
                                                 "cro": nombre}
             if res["destino"] is not None:
                 absolutas[valor] = res["destino"]
+            else:
+                informe["completo"] = False        # una dirección de code.bin sin traducir rompe el parche en la 1.4
 
     # 2) CRO -------------------------------------------------------------------------------------------
     resultados = {}
@@ -95,6 +109,7 @@ def construir_actualizacion(*, cro_base: Ruta, cro_candidata: Ruta, romfs_actual
             continue
         r = relocalizar(b, c, u, absolutas=absolutas)
         problemas = verificar_estructura(u, r.datos, r.rangos) + verificar_relocalizacion(b, c, u, r)
+        problemas += absolutas_sin_traducir(c, u, r.datos, absolutas)
         resultados[nombre] = r
         informe["cro"][nombre] = {
             "resumen": r.resumen(),

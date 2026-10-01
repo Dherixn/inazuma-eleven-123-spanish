@@ -75,3 +75,61 @@ def test_retarget_import():
         c.retarget_import("g_X", 0x320, 0x1, esperado=0x2)
     with pytest.raises(ValidacionError):
         c.retarget_import("g_X", 0x330, 0x1)
+
+
+def test_motor_ie2():
+    from ie123kit.nucleo.ejecutable.ancho_real import IE2_MOTOR2
+    d = bytearray(0x212000)
+    struct.pack_into("<I", d, 0xC8, 0x211F00)
+    struct.pack_into("<I", d, 0xCC, 1)
+    struct.pack_into("<III", d, 0x211F00, 0, len(d), 0)
+    struct.pack_into("<I", d, IE2_MOTOR2.por_defecto, AR.LDR_IP_SP60)
+    out, _ = AR.aplicar_idempotente(bytes(d), AR.cueva_font8(0x211720, IE2_MOTOR2))
+    assert struct.unpack_from("<I", out, IE2_MOTOR2.por_defecto)[0] == AR.rama(IE2_MOTOR2.por_defecto, 0x211720)
+    assert struct.unpack_from("<I", out, 0x211730)[0] == AR.rama(0x211730, IE2_MOTOR2.sigue)
+
+
+def test_rutina_reinicio():
+    from ie123kit.nucleo.ejecutable import ancho_real as N
+    p = N.rutina_reinicio(0x1000)
+    assert len(p) == 8 and p[-1].despues == N.S_PINSTANCE
+    # ldr ip, [pc, #0x14] desde 0x1000 lee 0x1000 + 8 + 0x14 = la última palabra
+    assert 0x1000 + 8 + (p[0].despues & 0xFFF) == p[-1].direccion
+    b = N.llamada_reinicio(0x2000, 0xE59F206C, 0x1000)
+    assert b.despues >> 24 == 0xEB
+
+
+def test_cueva_global_y_retirar():
+    from ie123kit.nucleo.ejecutable import ancho_real as N
+    d = bytearray(0x212000)
+    struct.pack_into("<I", d, 0xC8, 0x211F00)
+    struct.pack_into("<I", d, 0xCC, 1)
+    struct.pack_into("<III", d, 0x211F00, 0, len(d), 0)
+    struct.pack_into("<I", d, N.IE2_MOTOR2.por_defecto, N.LDR_IP_SP60)
+    v1, _ = N.aplicar_idempotente(bytes(d), N.cueva_font8(0x211720, N.IE2_MOTOR2))
+    limpio = N.retirar(v1, [p for p in N.cueva_font8(0x211720, N.IE2_MOTOR2) if p.direccion >= 0x211720])
+    v2, _ = N.aplicar_idempotente(limpio, N.cueva_font8_global(0x211720, N.IE2_MOTOR2))
+    assert struct.unpack_from("<I", v2, 0x211728)[0] == 0x137C0002
+    assert struct.unpack_from("<I", v2, 0x21172C)[0] >> 24 == 0x1A      # bne
+
+
+def test_absolutas_sin_traducir():
+    from ie123kit.nucleo.construir.actualizacion import absolutas_sin_traducir
+    v = struct.pack("<I", 0x2A16D8)
+    assert absolutas_sin_traducir(v, b"", v, {0x2A16D8: 0x2A06A8})
+    assert not absolutas_sin_traducir(v, b"", struct.pack("<I", 0x2A06A8), {0x2A16D8: 0x2A06A8})
+
+
+def test_rutina_caja_y_motor1():
+    from ie123kit.nucleo.ejecutable import ancho_real as N
+    p = N.rutina_reinicio_caja(0x1000)
+    assert len(p) == 11 and 0x1000 + 8 + (p[0].despues & 0xFFF) == p[-1].direccion
+    q = N.cueva_motor1_linea(0x197FE0, 0xE6804, 0xDA02C5CF, 0x197F48, 0x197F54)
+    assert q[-1].despues >> 24 == 0xDA and q[2].despues >> 24 == 0x0A
+
+
+def test_bigramas_por_letra():
+    from ie123kit.nucleo.ejecutable import ancho_real as N
+    p = N.bigramas_por_letra(0x211650, 0xEAFFFFF1, 0x2117F4)
+    assert p[0].despues == 0xE5D41000 and p[2].despues == 0xE3510088 and p[3].despues == 0x33A01000
+    assert p[1].despues == N.rama(0x211654, 0x2117F4)

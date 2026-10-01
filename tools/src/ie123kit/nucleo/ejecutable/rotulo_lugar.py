@@ -208,3 +208,34 @@ def aplicar(cro: bytes, baldosas: int = 16, desplazamiento: int = 0x3E00) -> tup
                      "max_caracteres": MAX_CARACTERES, "reparto_vram": [(p, hex(o), hex(t)) for p, o, t in
                                                                         reparto_vram(cro)]}
     return salida, inf
+
+
+# ------------------------------------------------------------------------------------------------ placa
+#: placa del rótulo: nodo 11 del QNA de ``<juego>/data_iz/a_field/field_t.arc``. La JP la forma con 2 piezas
+#: de 60×20 (x = -169 y la espejada en -109: 120 px); la EU (IE1 e IE3) inserta 3 copias espejadas en 10, -29 y
+#: -69 (239 px). ``insertar_copias_nodo`` reproduce byte a byte el QNA europeo a partir del japonés.
+NODO_PLACA = 11
+XS_PLACA_EU = (10.0, -29.0, -69.0)
+
+
+def placa_ampliada(arc: bytes, nodo: int = NODO_PLACA, xs=XS_PLACA_EU) -> tuple[bytes, dict]:
+    """``field_t.arc`` (envuelto o no) con la placa del rótulo estirada como en la EU; idempotente."""
+    from ie123kit.nucleo.compresion.sszl import reenvolver_como, unwrap
+    from ie123kit.nucleo.contenedores.arcv import entries, rearmar
+    from ie123kit.nucleo.graficos.qna import insertar_copias_nodo
+
+    raw = unwrap(bytes(arc))
+    lista = [(h, raw[o:o + t]) for o, t, h in entries(raw)]
+    iq = [i for i, (_, b) in enumerate(lista) if b[:8] == b" QNA 051"]
+    if len(iq) != 1:
+        raise ValidacionError("placa_sin_qna", detalle=str(iq))
+    q = lista[iq[0]][1]
+    cnt = struct.unpack_from("<I", q, struct.unpack_from("<I", q, 40)[0] + 16 * nodo)[0]
+    if cnt == 2 + len(xs):
+        return bytes(arc), {"estado": "ya ampliada", "partes": cnt}
+    if cnt != 2:
+        raise ValidacionError("placa_inesperada", detalle=f"nodo {nodo}: {cnt} partes")
+    lista[iq[0]] = (lista[iq[0]][0], insertar_copias_nodo(q, nodo, xs))
+    nuevo = rearmar(lista)
+    return reenvolver_como(bytes(arc), nuevo, "keep"), {"estado": "ampliada", "partes": cnt + len(xs),
+                                                       "xs": [-169.0, *xs, -109.0]}

@@ -964,3 +964,24 @@ entrar.»). **Emparejar siempre por ID de cadena alineando el patrón de saltos*
   corto, no el dibujo de las fuentes.
 - **Regla:** en los nombres cortos del IE3 no se usan bigramas. El límite de 6 caracteres hay que resolverlo de
   otra forma.
+
+## ❌ Ensanchar la caja de nombre `this+0x440` para la alineación (IE3, descarte_r11, 2026-09-26)
+
+- **Qué se probó:** como el europeo, W 0x40 → 0x50 en 0x1ace90 y ancho del mapa 8 → 10 en 0x1aa180.
+- **Resultado en Azahar:** la alineación sigue igual, con letras sueltas por el campo. Esa caja es de otra pantalla.
+- **Regla:** la placa de la alineación dibuja a paso fijo con 6 casillas. Por decisión del usuario, los nombres
+  cortos se quedan en 6 caracteres como máximo (capa `work/ie3/shared/capas/nombres/nombres_cortos_6`, 5 letras y
+  un punto).
+
+## ⚠️ Resultado del entrenamiento del IE3: frases por familia y .arc europeo entero (2026-09-26, sin probar en juego)
+
+- «Markはコントロールが1上がった！» (ina_main3ogre.cro 0xb52d8) compone con el nombre de la característica; el europeo
+  tiene 18 frases enteras (169/170, 336-347, 770-773) que no caben en los huecos (930 B). `ie123kit.ie3.comun.entrenamiento`:
+  cada caso del switch deja formato de familia (4) y argumentos en r1-r5, un solo sprintf con la frase de «máximo» y, si
+  no se ha llegado al máximo, corte en el primer «\n» (la frase normal es siempre ese prefijo). Se quitan la conversión a
+  cifras (la subida va con %d desde r6) y la copia del nombre; la tabla de saltos no cambia. Capa `menus_cro/entrenamiento`.
+- «Entren:» lo causó pendientes_92: recortó `win04` europeo (128×64) dentro del japonés (64×64); la lista con iconos
+  (`mes01`, 128×128 frente a 128×64) solo dejó «Tiro». Va el `inazuma3_ogre/.../tokkun_b.arc` europeo entero (mismos
+  grupos y escenas; `ie123kit.nucleo.graficos.arc_europeo`), capa `graficos/tokkun_resultado`.
+- Pendiente de ver en juego: que las frases latinas largas («Los PE de %s han aumentado en %d.») quepan en el ancho de
+  la ventana de este mensaje y que las texturas del doble de tamaño carguen.
