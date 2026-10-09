@@ -1,0 +1,149 @@
+"""Quién es quién en los tres juegos: la tabla que permite pasar un jugador de un juego al siguiente.
+
+- IE1 → IE2: misma numeración. Se acepta el mismo índice si el nombre o la cara coinciden;
+  el IE2 rellena con jugadores nuevos los huecos que el IE1 dejaba reservados.
+- IE2 → IE3: el IE3 renumera. Se empareja por nombre y cara, que se conserva entre juegos;
+  si el nombre cambia se acepta la cara sola cuando es única, y si no, el nombre solo cuando es único.
+
+Cada emparejamiento lleva su criterio para que la revisión manual sepa de qué fiarse.
+"""
+from __future__ import annotations
+
+import unicodedata
+from collections import defaultdict
+from dataclasses import dataclass
+
+from ie123kit.definitiva.fichas import Crecimiento, Identidad
+
+NOMBRE_Y_CARA = "nombre+cara"
+CARA = "cara"
+NOMBRE = "nombre"
+AMBIGUO = "ambiguo"
+MISMO_INDICE = "mismo indice"
+
+
+@dataclass(frozen=True)
+class Jugador:
+    identidad: Identidad
+    crecimiento: Crecimiento
+
+    @property
+    def indice(self) -> int:
+        return self.identidad.indice
+
+    @property
+    def nombrado(self) -> bool:
+        return bool(self.identidad.nombre)
+
+
+@dataclass(frozen=True)
+class Equivalencia:
+    ie1: int | None
+    ie2: int
+    ie3: int | None
+    nombre: str
+    posicion: str
+    elemento: str
+    cara: int
+    criterio_ie3: str
+    jugable_ie2: bool
+    jugable_ie3: bool
+
+
+def jugadores(identidades: list[Identidad], crecimiento: list[Crecimiento]) -> list[Jugador]:
+    if len(identidades) != len(crecimiento):
+        raise ValueError(f"unitbase ({len(identidades)}) y unitstat ({len(crecimiento)}) no cuadran")
+    return [Jugador(i, c) for i, c in zip(identidades, crecimiento, strict=True)]
+
+
+def normalizar(nombre: str) -> str:
+    sin_tildes = unicodedata.normalize("NFKD", nombre).encode("ascii", "ignore").decode("ascii")
+    return " ".join(sin_tildes.lower().replace(".", " ").split())
+
+
+def _elegir(candidatos: list[Jugador], origen: Jugador) -> tuple[Jugador, bool]:
+    """Desempata entre varios candidatos; devuelve (elegido, era_ambiguo)."""
+    if len(candidatos) == 1:
+        return candidatos[0], False
+    misma_pos = [c for c in candidatos if c.identidad.posicion == origen.identidad.posicion]
+    if len(misma_pos) == 1:
+        return misma_pos[0], False
+    jugables = [c for c in (misma_pos or candidatos) if c.crecimiento.jugable]
+    if len(jugables) == 1:
+        return jugables[0], False
+    return min(misma_pos or candidatos, key=lambda c: c.indice), True
+
+
+def emparejar(origen: list[Jugador], destino: list[Jugador]) -> dict[int, tuple[int, str]]:
+    """Índice de origen → (índice de destino, criterio). Los que no aparecen no tienen pareja."""
+    por_nombre_cara: dict[tuple[str, int], list[Jugador]] = defaultdict(list)
+    por_cara: dict[int, list[Jugador]] = defaultdict(list)
+    por_nombre: dict[str, list[Jugador]] = defaultdict(list)
+    for j in destino:
+        if not j.nombrado:
+            continue
+        clave = normalizar(j.identidad.nombre)
+        por_nombre_cara[(clave, j.identidad.cara)].append(j)
+        por_cara[j.identidad.cara].append(j)
+        por_nombre[clave].append(j)
+
+    salida: dict[int, tuple[int, str]] = {}
+    for j in origen:
+        if not j.nombrado:
+            continue
+        clave = normalizar(j.identidad.nombre)
+        if candidatos := por_nombre_cara.get((clave, j.identidad.cara)):
+            elegido, dudoso = _elegir(candidatos, j)
+            salida[j.indice] = (elegido.indice, AMBIGUO if dudoso else NOMBRE_Y_CARA)
+        elif len(por_cara.get(j.identidad.cara, ())) == 1 and j.identidad.cara:
+            salida[j.indice] = (por_cara[j.identidad.cara][0].indice, CARA)
+        elif len(por_nombre.get(clave, ())) == 1:
+            salida[j.indice] = (por_nombre[clave][0].indice, NOMBRE)
+    return salida
+
+
+def mismo_indice(ie1: list[Jugador], ie2: list[Jugador]) -> dict[int, int]:
+    """IE2 → IE1 cuando la ficha del mismo índice es el mismo jugador (nombre o cara)."""
+    salida = {}
+    for a, b in zip(ie1, ie2, strict=False):
+        if not (a.nombrado and b.nombrado):
+            continue
+        if normalizar(a.identidad.nombre) == normalizar(b.identidad.nombre) or a.identidad.cara == b.identidad.cara:
+            salida[b.indice] = a.indice
+    return salida
+
+
+def tabla(ie1: list[Jugador], ie2: list[Jugador], ie3: list[Jugador]) -> list[Equivalencia]:
+    hacia_ie1 = mismo_indice(ie1, ie2)
+    hacia_ie3 = emparejar(ie2, ie3)
+    salida = []
+    for j in ie2:
+        if not j.nombrado:
+            continue
+        destino, criterio = hacia_ie3.get(j.indice, (None, ""))
+        salida.append(Equivalencia(
+            ie1=hacia_ie1.get(j.indice),
+            ie2=j.indice,
+            ie3=destino,
+            nombre=j.identidad.nombre,
+            posicion=j.identidad.posicion,
+            elemento=j.identidad.elemento,
+            cara=j.identidad.cara,
+            criterio_ie3=criterio,
+            jugable_ie2=j.crecimiento.jugable,
+            jugable_ie3=destino is not None and ie3[destino].crecimiento.jugable,
+        ))
+    return salida
+
+
+COLUMNAS = ("ie1", "ie2", "ie3", "nombre", "posicion", "elemento", "cara", "criterio_ie3", "jugable_ie2", "jugable_ie3")
+
+
+def a_filas(equivalencias: list[Equivalencia]) -> list[list[str]]:
+    def celda(v) -> str:
+        if v is None:
+            return ""
+        if isinstance(v, bool):
+            return "1" if v else "0"
+        return str(v)
+    return [[celda(getattr(e, c)) for c in COLUMNAS] for e in equivalencias]
