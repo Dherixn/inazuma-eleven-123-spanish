@@ -83,6 +83,17 @@ son idénticos**: los ficheros propios de cada versión van en las dos copias co
 (`BinderData_F/_B`, `PracticeDataF/B`, `PracticeGame0F…4F/B`). La versión la elige `IZ_TYPE` en
 `INAZUMA.INI` (0 Fuego, 1 Ventisca).
 
+Dentro de esas parejas, lo que cambia es mínimo:
+
+| Fichero | Bytes distintos | Qué cambia |
+|---|---|---|
+| `BinderData_F/_B.dat` (catálogo de equipos del archivador) | 18 | la entrada del equipo 0x2F **Prominence** (Fuego) frente al 0x30 **Polvo de Diamantes** (Ventisca) |
+| `PracticeDataF/B.dat` (104 partidos de entrenamiento de 18 B) | 2 | los rivales de los partidos 65 (0x15F/0x16C) y 82 (0x49/0x4A) |
+| `PracticeGame0F…4F/B.dat` | 0 | idénticos |
+
+El resto de diferencias entre versiones (qué capitán se ficha, contra quién se juega) tiene que estar en
+los scripts de evento, que son los mismos en las dos copias y preguntan por la versión.
+
 **Consecuencia:** juntar las versiones no exige traer contenido de fuera. Hace falta que el juego cargue
 las dos listas en vez de una, o fundir las `_B` dentro de las `_F`. A comprobar en 3DS: cómo pasa la
 recopilación la versión elegida en el menú a `ina_main2.cro` (si lee `IZ_TYPE` o la fija ella).
@@ -111,10 +122,17 @@ Para poder activarlos y desactivarlos en el juego hace falta tocar en memoria lo
 (plugin) o que el juego vuelva a leer el fichero. A comprobar en 3DS: que cada `inazumaN/data_iz/` lleve
 su `INAZUMA.INI` y que se siga leyendo.
 
-## 7. Otros ficheros de lógica a estudiar
+## 7. Curvas de experiencia (`lvup_exp.dat`)
+
+16 curvas × 98 valores u32: la EXP acumulada para llegar a los niveles 2…99 (la curva 0 empieza 100,
+300, 600, 1000…; la 15 está vacía). **Son idénticas en los tres juegos**, así que la EXP de un jugador
+se puede traspasar tal cual y conserva su nivel. Escalarlas es la forma de datos de «menos farmeo»
+(a comprobar si la partida guarda el nivel o lo recalcula desde la EXP).
+
+## 8. Otros ficheros de lógica a estudiar
 
 `ScoutData.dat`, `ScoutSpCode.dat`, `HeadhuntData.dat` (fichajes), `JinmyakuData.dat`/`JinmyakuLV.dat`
-(mapa de contactos), `lvup_exp.dat` (curva de EXP), `lvup_command.dat`, `cmd_cond.dat` (requisitos de
+(mapa de contactos), `lvup_command.dat`, `cmd_cond.dat` (requisitos de
 técnicas, probablemente las combinadas), `shop.dat` (tiendas), `TokkunData.dat` (entrenamientos),
 `TradeData.dat` (intercambios). Además, el IE2 incluye en `logic01/` los equipos, estadísticas y
 partidos del IE1 (`team.pkb`, `unitstat.dat`, `games.dat`, `fieldinf.dat`, `PracticeData*`), con el
