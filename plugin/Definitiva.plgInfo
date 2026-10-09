@@ -1,0 +1,24 @@
+Author: Proyecto Inazuma Eleven 1·2·3 en español
+
+Version:
+    Major: 0
+    Minor: 1
+    Revision: 0
+
+Targets: # Inazuma Eleven 1·2·3!! Endō Mamoru Densetsu (00040000000BB800)
+    - 0x000BB800
+
+Title: Inazuma Eleven 1·2·3 — Edición definitiva
+
+Summary: Continuidad entre los tres juegos y ayudas opcionales
+
+Description: |
+  Plugin de la edición definitiva de la traducción al español.
+  - Copia de seguridad de las partidas en la SD.
+  - Traspaso de fichajes de un juego al siguiente (en desarrollo).
+  - Ayudas opcionales (en desarrollo).
+
+# Any: lo cargan Luma3DS y Azahar. Console lo rechaza Azahar y Citra lo rechaza Luma.
+Compatibility: Any
+
+MemorySize: 2MiB
