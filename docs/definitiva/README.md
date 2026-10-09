@@ -65,10 +65,20 @@ del juego anterior, el juego ofrece continuarla. Cada juego arranca con el scrip
   (`definitiva.identidades`).
 - [x] Mapa de diferencias entre Fuego y Ventisca y ajustes de `INAZUMA.INI`
   ([HALLAZGOS_NDS.md](HALLAZGOS_NDS.md)).
-- [ ] **Bloqueo:** ROM japonesa de la recopilación (CTR-P-AETJ) en esta máquina, para repetir las
-  medidas en 3DS, estudiar el formato de partida y probar en Azahar.
-- [ ] Formato de partida de los tres juegos en 3DS.
-- [ ] Mecanismo del traspaso (plugin o parche de código).
-- [ ] Capa de datos: versiones juntas, Aiden, `INAZUMA.INI`, curvas de EXP.
+- [x] Peticiones de la comunidad ordenadas y enlazadas al plan ([PETICIONES.md](PETICIONES.md)).
+- [x] Formato de partida del IE2 y del IE3 de la recopilación (cabecera, dos CRC32, fichas de jugador) y
+  motor de traspaso con sus tres modos (`definitiva.partida`, `definitiva.traspaso`). Probado con
+  partidas sintéticas; **falta probarlo con partidas reales**.
+- [x] Mecanismo elegido: **plugin 3GX** (CTRPluginFramework). Lo cargan Luma3DS ≥ 13 y Azahar. Su código
+  vive en memoria propia, así que no choca con el límite de los CRO. Ver [`plugin/`](../../plugin/README.md).
+- [x] Plugin v0.1 compilado: menú propio y copia de las partidas a la SD. El núcleo del traspaso en C++
+  da los mismos bytes que el de Python (120 casos).
+- [ ] **Bloqueo:** ROM japonesa de la recopilación (CTR-P-AETJ, title ID `00040000000BB800`) en esta
+  máquina, para repetir las medidas en 3DS, ver los archivos de partida y probar en Azahar.
+- [ ] Ficha de jugador de la partida del IE1 (distinta de la del IE2 y el IE3) y nombres de los archivos de
+  partida de cada juego.
+- [ ] Campo de la curva de EXP de cada jugador (para el modo equilibrado): saldrá de los pares EXP-nivel de
+  una partida real.
+- [ ] Capa de datos: versiones juntas, Aiden, `INAZUMA.INI`, curvas de EXP, dificultad.
 
 Detalle medido: [HALLAZGOS_NDS.md](HALLAZGOS_NDS.md).
