@@ -5,3 +5,7 @@ tools/font_patch.py -text
 tools/dialogue_lock.py -text
 tools/build_ie1_probe.py -text
 tools/build_ui_revision.py -text
+
+# Plugin 3GX: se compila con make en Linux (Docker), así que va con LF aunque Git convierta en Windows.
+plugin/** text eol=lf
+plugin/*.ps1 text eol=crlf
