@@ -129,6 +129,14 @@ def decodificar_latin(campo: bytes) -> str:
     return dec_es(crudo).strip()
 
 
+def leer_curvas_exp(lvup_exp: bytes) -> list[list[int]]:
+    """``lvup_exp.dat``: 16 curvas × 98 u32 con la EXP acumulada para los niveles 2…99."""
+    if len(lvup_exp) != 16 * 98 * 4:
+        raise ValueError(f"lvup_exp.dat de {len(lvup_exp)} B; se esperaban {16 * 98 * 4}")
+    valores = struct.unpack(f"<{16 * 98}I", lvup_exp)
+    return [list(valores[c * 98:(c + 1) * 98]) for c in range(16)]
+
+
 def leer_identidades(unitbase: bytes, perfil: Perfil, decodificar=decodificar_latin) -> list[Identidad]:
     if len(unitbase) % perfil.base_paso:
         raise ValueError(f"unitbase de {len(unitbase)} B no es múltiplo de {perfil.base_paso} ({perfil.nombre})")
