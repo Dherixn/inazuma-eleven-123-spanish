@@ -119,3 +119,10 @@ def test_tabla_encadena_los_tres_juegos():
     assert [(e.ie1, e.ie2, e.ie3) for e in tabla] == [(0, 0, 1), (None, 1, None)]
     assert tabla[0].jugable_ie3 and not tabla[1].jugable_ie2
     assert identidades.a_filas(tabla)[1][:3] == ["", "1", ""]
+
+
+def test_ie1_a_ie2_prefiere_el_mismo_indice_y_si_no_busca_por_nombre_y_cara():
+    ie1 = _jugadores(fichas.PERFILES["nds.ie1"], [("Doug Lee", 0x17A, 0x4), ("Rob", 50), ("Zed", 60)])
+    ie2 = _jugadores(fichas.PERFILES["nds.ie2"], [("Pearson Gaze", 0x17A, 0x4), ("Otro", 51), ("Nuevo", 70),
+                                                  ("Rob", 50)])
+    assert identidades.ie1_a_ie2(ie1, ie2) == {0: 0, 1: 3}

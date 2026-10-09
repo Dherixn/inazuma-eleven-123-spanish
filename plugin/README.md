@@ -12,6 +12,15 @@ entre juegos. Ver [`docs/definitiva/README.md`](../docs/definitiva/README.md).
 Todavía no escribe en la memoria del juego. Las ayudas (#7) y el traspaso (#2) se activarán cuando sus
 direcciones estén comprobadas con la ROM.
 
+## Núcleo del traspaso
+
+`Sources/Nucleo/` no depende de la 3DS: es el gemelo en C++ de `ie123kit.definitiva.partida` y
+`.traspaso`, y se compila también en el PC. `Equivalencias.inc` se genera con
+`python -m ie123kit.definitiva cabecera …` (hoy desde las ROM NDS; se regenerará con el 3DS, #3).
+
+`python plugin/pruebas/comparar.py` genera partidas sintéticas de los tres juegos, hace el traspaso con
+los dos y exige el mismo informe y los mismos bytes. Necesita la imagen Docker de `compilar.ps1`.
+
 ## Compilar
 
 Solo hace falta Docker:

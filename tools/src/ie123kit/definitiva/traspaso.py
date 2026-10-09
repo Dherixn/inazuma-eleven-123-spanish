@@ -55,6 +55,17 @@ def exp_minima(curvas: list[list[int]], curva: int, nivel: int) -> int:
     return 0 if nivel == 1 else curvas[curva][nivel - 2]
 
 
+def validar_opciones(op: Opciones) -> None:
+    """Falla antes de tocar ninguna partida si al modo le falta algo."""
+    if op.modo not in MODOS:
+        raise ValueError(f"modo desconocido: {op.modo!r} (válidos: {', '.join(MODOS)})")
+    if op.modo == SOLO_FICHAJES and op.nivel_fichaje is None:
+        raise ValueError("el modo solo_fichajes necesita nivel_fichaje")
+    necesita_exp = op.modo == SOLO_FICHAJES or (op.modo == EQUILIBRADA and op.nivel_tope is not None)
+    if necesita_exp and op.exp_de_nivel is None:
+        raise ValueError(f"el modo {op.modo} necesita exp_de_nivel para recalcular la EXP")
+
+
 def _nivel_y_exp(j: JugadorPartida, id_destino: int, op: Opciones) -> tuple[int, int]:
     if op.modo == COMPLETA:
         return j.nivel, j.exp
@@ -62,16 +73,10 @@ def _nivel_y_exp(j: JugadorPartida, id_destino: int, op: Opciones) -> tuple[int,
         if op.nivel_tope is None or j.nivel <= op.nivel_tope:
             return j.nivel, j.exp
         return op.nivel_tope, _exp(op, id_destino, op.nivel_tope)
-    if op.modo == SOLO_FICHAJES:
-        if op.nivel_fichaje is None:
-            raise ValueError("el modo solo_fichajes necesita nivel_fichaje")
-        return op.nivel_fichaje, _exp(op, id_destino, op.nivel_fichaje)
-    raise ValueError(f"modo desconocido: {op.modo!r} (válidos: {', '.join(MODOS)})")
+    return op.nivel_fichaje, _exp(op, id_destino, op.nivel_fichaje)
 
 
 def _exp(op: Opciones, id_destino: int, nivel: int) -> int:
-    if op.exp_de_nivel is None:
-        raise ValueError(f"el modo {op.modo} necesita exp_de_nivel para recalcular la EXP")
     return op.exp_de_nivel(id_destino, nivel)
 
 
@@ -98,6 +103,7 @@ def traspasar(origen: Partida, destino: Partida, mapa_ids: Mapping[int, int] | N
     ``mapa_ids`` traduce el número de jugador del juego de origen al de destino; ``None`` para
     IE1 → IE2, que comparten numeración.
     """
+    validar_opciones(op)
     informe = Informe()
     mismo_formato = origen.formato.jugador_paso == destino.formato.jugador_paso
     destino_jugadores = destino.jugadores()

@@ -18,7 +18,7 @@ CTRPFLIB	?=	$(DEVKITPRO)/libctrpf
 TARGET		:= 	Definitiva
 INCLUDES	:= 	Includes
 
-SOURCES 	:= 	Sources
+SOURCES 	:= 	Sources Sources/Nucleo
 
 PSF 		:= 	Definitiva.plgInfo
 
@@ -35,7 +35,7 @@ CFLAGS		+=	$(INCLUDE) -D__3DS__ $(DEFINES)
 
 #-Wall -Wextra -Wdouble-promotion -Werror
 
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
+CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 
 ASFLAGS		:= $(ARCH) $(G)
 LDFLAGS		:= -T $(TOPDIR)/3gx.ld $(ARCH) -Os -Wl,$(WL)--gc-sections,--section-start,.text=0x07000100 #-specs=3dsx.specs

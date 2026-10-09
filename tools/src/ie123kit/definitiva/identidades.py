@@ -113,6 +113,19 @@ def mismo_indice(ie1: list[Jugador], ie2: list[Jugador]) -> dict[int, int]:
     return salida
 
 
+def ie1_a_ie2(ie1: list[Jugador], ie2: list[Jugador]) -> dict[int, int]:
+    """IE1 → IE2 para el traspaso: el mismo índice si es el mismo jugador; si no, por nombre y cara.
+
+    En las ROM NDS es siempre el mismo índice: los cambios de nombre («Doug Lee» → «Pearson Gaze»,
+    «T. Fielding» → «Tammy Fielding») conservan la cara y la posición, y ningún hueco del IE1 pasa a
+    otro jugador. La tabla explícita evita depender de eso en el 3DS.
+    """
+    salida = {a: b for b, a in mismo_indice(ie1, ie2).items()}
+    resto = [j for j in ie1 if j.indice not in salida]
+    salida.update({a: b for a, (b, _) in emparejar(resto, ie2).items()})
+    return salida
+
+
 def tabla(ie1: list[Jugador], ie2: list[Jugador], ie3: list[Jugador]) -> list[Equivalencia]:
     hacia_ie1 = mismo_indice(ie1, ie2)
     hacia_ie3 = emparejar(ie2, ie3)

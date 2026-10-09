@@ -138,3 +138,14 @@ def test_curvas_exp():
     assert tr.exp_minima(curvas, 15, 99) == 15097
     with pytest.raises(ValueError):
         leer_curvas_exp(b"\0" * 10)
+
+
+def test_opciones_incompletas_fallan_antes_de_tocar_la_partida():
+    ie2 = _partida("ie2.123", [(1, 10, 500, []), (2, 50, 90000, [])])
+    ie3 = _partida("ie3.123", [(9, 3, 300, [])])
+    antes = bytes(ie3.datos)
+    with pytest.raises(ValueError, match="exp_de_nivel"):
+        tr.traspasar(ie2, ie3, {1: 1, 2: 2}, tr.Opciones(modo=tr.EQUILIBRADA, nivel_tope=20))
+    assert bytes(ie3.datos) == antes
+    with pytest.raises(ValueError, match="modo desconocido"):
+        tr.traspasar(ie2, ie3, {1: 1}, tr.Opciones(modo="otro"))
