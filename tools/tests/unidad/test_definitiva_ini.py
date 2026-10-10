@@ -40,10 +40,20 @@ def test_clave_que_no_existe_es_un_error():
 
 
 def test_aplicar_ayudas():
-    nuevo = ini.aplicar_ayudas(INI, {"encuentros": "pocos", "pt": "infinitos", "cpu": "dificil"})
+    nuevo = ini.aplicar_ayudas(INI, {"encuentros": "muy_pocos", "rival": "muchas", "velocidad": "rapida"})
     valores = ini.leer(nuevo)
-    assert (valores["RPG_ENCOUNT_TIME"], valores["SPECIAL_SKILL_SPEND_TP"], valores["CPU_USE_SPECIAL_PERCENT"]) == (
-        "240", "0", "60")
-    assert ini.aplicar_ayudas(INI, {"encuentros": "normal", "velocidad": "normal"}) == INI
+    assert (valores["RPG_ENCOUNT_TIME"], valores["CPU_USE_SPECIAL_PERCENT"], valores["RPG_MOVESPEED"]) == (
+        "400", "70", "448")
+    assert ini.aplicar_ayudas(INI, {"encuentros": "normal", "velocidad": "normal", "rival": "normal"}) == INI
     with pytest.raises(KeyError):
-        ini.aplicar_ayudas(INI, {"encuentros": "ninguno"})
+        ini.aplicar_ayudas(INI, {"encuentros": "pocos"})
+    with pytest.raises(KeyError):
+        ini.aplicar_ayudas(INI, {"pt": "infinitos"})
+
+
+def test_niveles_normales_son_los_de_fabrica():
+    fabrica = {"RPG_ENCOUNT_TIME": 60, "RPG_MOVESPEED": 320, "CPU_USE_SPECIAL_PERCENT": 40, "ITEM_SELL_PERCENT": 50,
+               "OFFSIDE_EFFECTIVE": 1}
+    for ayuda in ini.AYUDAS.values():
+        primero = next(iter(ayuda.niveles.values()))
+        assert all(fabrica[k] == v for k, v in primero.items())

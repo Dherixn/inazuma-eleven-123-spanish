@@ -1,12 +1,13 @@
 // Plugin de la edición definitiva de Inazuma Eleven 1·2·3 (ver docs/definitiva/).
 //
-// Menús: Continuidad (traspaso de partida entre juegos, sobre los archivos de partida) y Partidas
-// (copias de seguridad). Las ayudas que escriben en la memoria del juego llegan aparte (#7).
+// Menús: Continuidad (traspaso de partida entre juegos, sobre los archivos de partida), Ayudas (opcionales,
+// sobre INAZUMA.INI en memoria) y Partidas (copias de seguridad).
 
 #include <3ds.h>
 
 #include <CTRPluginFramework.hpp>
 
+#include "Ayudas.hpp"
 #include "Continuidad.hpp"
 #include "Partidas.hpp"
 
@@ -55,12 +56,15 @@ namespace CTRPluginFramework {
             MessageBox("Edición definitiva", "Este plugin es para Inazuma Eleven 1·2·3 (00040000000BB800).")();
         }
 
+        Definitiva::IniciarAyudas();
+
         MenuFolder *partidas = new MenuFolder("Partidas", "Copias de seguridad antes de un traspaso.");
         *partidas += new MenuEntry("Ver archivos de partida", nullptr, VerPartidas,
                                    "Lista los archivos de partida de los tres juegos.");
         *partidas += new MenuEntry("Copiar partidas a la SD", nullptr, CopiarPartidas,
                                    "Copia las partidas en /Inazuma123Definitiva/partidas/<fecha>/ de la SD.");
         *menu += Definitiva::CrearMenuContinuidad(CARPETA_COPIAS);
+        *menu += Definitiva::CrearMenuAyudas();
         *menu += partidas;
 
         menu->Run();

@@ -4,8 +4,14 @@ Se trabaja sobre bytes: las claves y los valores son ASCII, y los comentarios en
 cual. Solo se cambian claves que ya existen; una clave que no está es un error, porque el motor no lee
 claves que no conoce.
 
-Las ayudas que se eligen al instalar salen de aquí (``AYUDAS``). Los valores están puestos a ojo a
-partir del de fábrica y se ajustarán al probarlos en el juego (#7, #11).
+Las ayudas se eligen en el plugin, que cambia la tabla del INI en memoria al momento (plugin/Sources/
+Ayudas.cpp; ahí está cuándo lee el juego cada clave). ``AYUDAS`` repite los mismos niveles para fijarlos en
+el propio INI del mod, para quien juegue sin plugin.
+
+Lo que dice el código de los tres módulos (ina_main1/2/3ogre.cro): RPG_ENCOUNT_TIME se relee cada vez que
+se reinicia el contador de encuentros; RPG_MOVESPEED, al entrar en el modo campo; CPU_USE_SPECIAL_PERCENT,
+ITEM_SELL_PERCENT y OFFSIDE_EFFECTIVE, una vez al cargar el juego. SPECIAL_SKILL_SPEND_TP y FUSEI_ITEM_NO
+no los lee ningún módulo (restos de la versión de DS): cambiarlos no hace nada.
 """
 from __future__ import annotations
 
@@ -47,24 +53,31 @@ class Ayuda:
 AYUDAS = {
     "encuentros": Ayuda(
         "Encuentros aleatorios",
-        "RPG_ENCOUNT_TIME es el intervalo entre comprobaciones de encuentro: más alto, menos encuentros.",
-        {"normal": {"RPG_ENCOUNT_TIME": 60}, "menos": {"RPG_ENCOUNT_TIME": 120}, "pocos": {"RPG_ENCOUNT_TIME": 240}},
+        "RPG_ENCOUNT_TIME: base del contador de pasos entre encuentros (×30); más alto, menos encuentros.",
+        {"normal": {"RPG_ENCOUNT_TIME": 60}, "menos": {"RPG_ENCOUNT_TIME": 150},
+         "muy_pocos": {"RPG_ENCOUNT_TIME": 400}, "ninguno": {"RPG_ENCOUNT_TIME": 99999},
+         "mas": {"RPG_ENCOUNT_TIME": 25}},
     ),
     "velocidad": Ayuda(
         "Velocidad al andar",
-        "RPG_MOVESPEED: velocidad del personaje por el mapa.",
-        {"normal": {"RPG_MOVESPEED": 320}, "rapida": {"RPG_MOVESPEED": 480}},
+        "RPG_MOVESPEED: velocidad del personaje por el mapa (con 5555 se sale del escenario).",
+        {"normal": {"RPG_MOVESPEED": 320}, "rapida": {"RPG_MOVESPEED": 448}, "muy_rapida": {"RPG_MOVESPEED": 576}},
     ),
-    "cpu": Ayuda(
-        "Supertécnicas de la CPU",
-        "CPU_USE_SPECIAL_PERCENT: probabilidad de que el rival use supertécnica (parte del selector de dificultad).",
-        {"normal": {"CPU_USE_SPECIAL_PERCENT": 40}, "dificil": {"CPU_USE_SPECIAL_PERCENT": 60},
-         "extremo": {"CPU_USE_SPECIAL_PERCENT": 80}},
+    "rival": Ayuda(
+        "Supertécnicas del rival",
+        "CPU_USE_SPECIAL_PERCENT: probabilidad de que la CPU use supertécnica (el juego la limita a 0..100).",
+        {"normal": {"CPU_USE_SPECIAL_PERCENT": 40}, "pocas": {"CPU_USE_SPECIAL_PERCENT": 15},
+         "muchas": {"CPU_USE_SPECIAL_PERCENT": 70}, "siempre": {"CPU_USE_SPECIAL_PERCENT": 100}},
     ),
-    "pt": Ayuda(
-        "Gasto de PT",
-        "SPECIAL_SKILL_SPEND_TP: si las supertécnicas gastan PT.",
-        {"normal": {"SPECIAL_SKILL_SPEND_TP": 1}, "infinitos": {"SPECIAL_SKILL_SPEND_TP": 0}},
+    "venta": Ayuda(
+        "Precio al vender objetos",
+        "ITEM_SELL_PERCENT: porcentaje del precio que pagan las tiendas.",
+        {"normal": {"ITEM_SELL_PERCENT": 50}, "completo": {"ITEM_SELL_PERCENT": 100}},
+    ),
+    "fueradejuego": Ayuda(
+        "Fuera de juego",
+        "OFFSIDE_EFFECTIVE: 1 se pita, 0 no.",
+        {"se_pita": {"OFFSIDE_EFFECTIVE": 1}, "no_se_pita": {"OFFSIDE_EFFECTIVE": 0}},
     ),
 }
 
