@@ -58,7 +58,7 @@ def test_solo_nombre_y_solo_en_su_juego():
     nuevo_dat, nuevo_texto, saltados = objetos.traducir(dat, texto, _codificar, "inazuma3")
     assert not any(s.startswith("objeto 78:") for s in saltados)
     pruebas = _registro(nuevo_dat, 87)
-    assert pruebas[:12] == b"M\x83\x9fs pruebas"[:12] or pruebas[:4] == b"M\x83\x9f"  # «Más» con su portador
+    assert pruebas[:13] == b"M\x83\x9fs pruebas\0"  # la «á» con su portador
     assert struct.unpack_from("<H", pruebas, objetos.OFF_DESCRIPCION)[0] == 3 and nuevo_texto[:len(texto)] == texto
     assert _registro(nuevo_dat, 78) == _registro(dat, 78)
     ogro_dat, _, _ = objetos.traducir(dat, texto, _codificar, "inazuma3_ogre")
