@@ -21,8 +21,10 @@ TITULO = "00040000000BB800"
 LEEME = """Inazuma Eleven 1·2·3 — Edición definitiva
 =========================================
 
-Va encima de la traducción al español (luishidalgoa/inazuma-eleven-123-spanish). Hace falta la ROM
-japonesa del recopilatorio (CTR-P-AETJ, {titulo}); no va incluida.
+Lleva dentro la traducción al español (luishidalgoa/inazuma-eleven-123-spanish) y la edición definitiva
+encima. Hace falta la ROM japonesa del recopilatorio (CTR-P-AETJ, {titulo}); no va incluida. Es para el
+juego SIN actualizar (1.0): si instalaste la actualización 1.4 en Azahar, desinstálala (con ella, los menús
+saldrían en japonés).
 
 AZAHAR (Windows, Android, AYN Thor)
 -----------------------------------
