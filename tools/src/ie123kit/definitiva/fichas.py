@@ -43,6 +43,12 @@ class Perfil:
     stat_paso: int
     stat_ofuscado: bool
     nivel_u8: bool
+    # El IE1 de la recopilación guarda cada técnica en 2 B (número u8 y nivel u8); el resto, en 4.
+    tecnica_u8: bool = False
+    # Nombre completo de la ficha (recopilación: +32 en IE1/IE2, +0 en IE3). Es el mismo en las
+    # variantes de un personaje con otra cara (Jude del Royal y del Raimon en el IE2).
+    off_nombre_completo: int = 32
+    ancho_nombre_completo: int = 32
 
 
 _IE12 = {"base_paso": 96, "off_identidad": 64, "off_cara": 66, "off_posicion": 85, "off_elemento": 90,
@@ -53,6 +59,11 @@ PERFILES = {
     "nds.ie1": Perfil("nds.ie1", **_IE12),
     "nds.ie2": Perfil("nds.ie2", **_IE12),
     "nds.ie3": Perfil("nds.ie3", **_IE3),
+    # Recopilación de 3DS (medido 2026-10-10): el IE1 viene del port europeo y tiene unitstat de 64 B;
+    # IE2 e IE3 tienen las mismas tablas que en DS, pero con la numeración japonesa.
+    "3ds.ie1": Perfil("3ds.ie1", **{**_IE12, "stat_paso": 64, "tecnica_u8": True}),
+    "3ds.ie2": Perfil("3ds.ie2", **_IE12),
+    "3ds.ie3": Perfil("3ds.ie3", **{**_IE3, "off_nombre_completo": 0, "ancho_nombre_completo": 28}),
 }
 
 
@@ -116,6 +127,11 @@ def ofuscar(registro: bytes) -> bytes:
     return bytes(_rol2(b) ^ 0xAD for b in salida)
 
 
+def decodificar_sjis(campo: bytes) -> str:
+    """Nombre de una ficha de la recopilación (Shift-JIS, con los glifos de la traducción)."""
+    return campo.split(b"\0")[0].decode("shift_jis", "replace").strip()
+
+
 def decodificar_latin(campo: bytes) -> str:
     """Nombre de una ficha NDS en castellano; los rellenos en Shift-JIS salen como cadena vacía.
 
@@ -166,6 +182,9 @@ def leer_crecimiento(unitstat: bytes, perfil: Perfil) -> list[Crecimiento]:
             reg = desofuscar(reg)
         tecnicas = []
         for k in range(4):
+            if perfil.tecnica_u8:
+                tecnicas.append((reg[44 + 2 * k], reg[45 + 2 * k]))
+                continue
             tec = struct.unpack_from("<H", reg, 44 + 4 * k)[0]
             nivel = reg[46 + 4 * k] if perfil.nivel_u8 else struct.unpack_from("<H", reg, 46 + 4 * k)[0]
             tecnicas.append((tec, nivel))

@@ -15,9 +15,10 @@ reimplementado aquí. Cada juego guarda su partida con la misma cabecera:
 
 Al sellar se calcula primero el CRC del bloque de datos (0x44) y después el de 0x40, que lo incluye.
 
-**En la recopilación cada juego guarda un archivo con tres espacios** (``ina1_save.dat``…), medido en
-Azahar el 2026-10-10: la cabecera de 0x40 B es común y cada espacio ocupa 0x80 B de info más el bloque
-de datos. Los offsets de arriba son los del espacio 1; el espacio k se desplaza k × (0x80 + datos).
+**En la recopilación cada juego guarda su archivo de 64 KB** (medido en Azahar el 2026-10-10):
+``ina1_save.dat`` con tres espacios y ``ina2F_save.dat`` (Tormenta de Fuego) con uno; además
+``Menu.sav`` (24 B). La cabecera de 0x40 B es común y cada espacio ocupa 0x80 B de info más el bloque de
+datos. Los offsets de arriba son los del espacio 1; el espacio k se desplaza k × (0x80 + datos).
 
 **El IE1 de la recopilación tiene su propia ficha de jugador**: 32 fichas de 0x60 B desde 0x79C
 (medido con la ficha de Mark y el hueco hasta el nombre del equipo, en 0x139C). EXP en +0 y número de
@@ -52,6 +53,12 @@ class FormatoPartida:
     jugador_paso: int
     verificado: bool
     max_jugadores: int = MAX_JUGADORES
+    num_espacios: int = 1
+    # Ficha de jugador. IE2/IE3: 6 técnicas u16 en +0x38, sus niveles en +0x44 y nivel en +0x4A.
+    # IE1 de la recopilación: técnicas de 1 B (como en su unitstat), sin niveles, y nivel en +0x3E
+    # (localizado en RAM: el menú muestra el valor de ese byte).
+    off_nivel: int = 0x4A
+    tecnicas_u8: bool = False
 
     @property
     def espacio_largo(self) -> int:
@@ -59,12 +66,13 @@ class FormatoPartida:
 
     @property
     def archivo_largo(self) -> int:
-        return CABECERA_LARGO + NUM_ESPACIOS * self.espacio_largo
+        return CABECERA_LARGO + self.num_espacios * self.espacio_largo
 
 
 FORMATOS = {
     "ie1.123": FormatoPartida("ie1.123", datos_largo=0x54C0, jugadores_inicio=0x79C, jugador_paso=0x60,
-                              verificado=False, max_jugadores=32),
+                              verificado=False, max_jugadores=32, num_espacios=3, off_nivel=0x3E,
+                              tecnicas_u8=True),
     "ie2.123": FormatoPartida("ie2.123", datos_largo=0x7DC0, jugadores_inicio=0x1268, jugador_paso=0x70, verificado=True),
     "ie3.123": FormatoPartida("ie3.123", datos_largo=0x5940, jugadores_inicio=0x11B0, jugador_paso=0x6C, verificado=True),
 }
@@ -85,24 +93,34 @@ class JugadorPartida:
         return replace(self, **cambios)
 
 
-def leer_jugador(reg: bytes) -> JugadorPartida:
+def leer_jugador(reg: bytes, formato: FormatoPartida | None = None) -> JugadorPartida:
+    formato = formato or FORMATOS["ie2.123"]
+    if formato.tecnicas_u8:
+        tecnicas, niveles = tuple(reg[0x38:0x38 + NUM_TECNICAS]), (0,) * NUM_TECNICAS
+    else:
+        tecnicas = struct.unpack_from(f"<{NUM_TECNICAS}H", reg, 0x38)
+        niveles = tuple(reg[0x44:0x44 + NUM_TECNICAS])
     return JugadorPartida(
         exp=struct.unpack_from("<I", reg, 0x00)[0],
         id=struct.unpack_from("<H", reg, 0x04)[0],
-        tecnicas=struct.unpack_from(f"<{NUM_TECNICAS}H", reg, 0x38),
-        niveles_tecnica=tuple(reg[0x44:0x44 + NUM_TECNICAS]),
-        nivel=reg[0x4A],
+        tecnicas=tecnicas,
+        niveles_tecnica=niveles,
+        nivel=reg[formato.off_nivel],
         crudo=bytes(reg),
     )
 
 
-def escribir_jugador(jugador: JugadorPartida) -> bytes:
+def escribir_jugador(jugador: JugadorPartida, formato: FormatoPartida | None = None) -> bytes:
+    formato = formato or FORMATOS["ie2.123"]
     reg = bytearray(jugador.crudo)
     struct.pack_into("<I", reg, 0x00, jugador.exp)
     struct.pack_into("<H", reg, 0x04, jugador.id)
-    struct.pack_into(f"<{NUM_TECNICAS}H", reg, 0x38, *jugador.tecnicas)
-    reg[0x44:0x44 + NUM_TECNICAS] = bytes(jugador.niveles_tecnica)
-    reg[0x4A] = jugador.nivel
+    if formato.tecnicas_u8:
+        reg[0x38:0x38 + NUM_TECNICAS] = bytes(t & 0xFF for t in jugador.tecnicas)
+    else:
+        struct.pack_into(f"<{NUM_TECNICAS}H", reg, 0x38, *jugador.tecnicas)
+        reg[0x44:0x44 + NUM_TECNICAS] = bytes(jugador.niveles_tecnica)
+    reg[formato.off_nivel] = jugador.nivel
     return bytes(reg)
 
 
@@ -110,8 +128,8 @@ class Partida:
     """Partida de un juego en memoria. Las ediciones no son válidas hasta :meth:`sellar`."""
 
     def __init__(self, datos: bytes, formato: FormatoPartida, espacio: int = 0):
-        if not 0 <= espacio < NUM_ESPACIOS:
-            raise ValueError(f"espacio {espacio} fuera de rango (0-{NUM_ESPACIOS - 1})")
+        if not 0 <= espacio < formato.num_espacios:
+            raise ValueError(f"espacio {espacio} fuera de rango (0-{formato.num_espacios - 1})")
         self.base = espacio * formato.espacio_largo
         minimo = self.base + DATOS_INICIO + formato.datos_largo
         if len(datos) < minimo:
@@ -164,7 +182,8 @@ class Partida:
 
     def jugadores(self) -> list[JugadorPartida]:
         paso = self.formato.jugador_paso
-        return [leer_jugador(self.datos[o:o + paso]) for o in map(self._off_jugador, range(self.num_jugadores))]
+        offsets = map(self._off_jugador, range(self.num_jugadores))
+        return [leer_jugador(self.datos[o:o + paso], self.formato) for o in offsets]
 
     def poner_jugador(self, indice: int, jugador: JugadorPartida) -> None:
         if not 0 <= indice < self.num_jugadores:
@@ -180,7 +199,7 @@ class Partida:
         return indice
 
     def _escribir_reg(self, indice: int, jugador: JugadorPartida) -> None:
-        reg = escribir_jugador(jugador)
+        reg = escribir_jugador(jugador, self.formato)
         if len(reg) != self.formato.jugador_paso:
             raise ValueError(f"ficha de {len(reg)} B en un formato de {self.formato.jugador_paso} B")
         o = self._off_jugador(indice)

@@ -100,16 +100,17 @@ def test_traspaso_ie1_a_ie2_conserva_numeracion_y_usa_plantilla_del_ie2():
 
 
 def test_espacios_de_la_recopilacion():
-    formato = pt.FORMATOS["ie2.123"]
+    formato = pt.FORMATOS["ie1.123"]
     datos = bytearray(formato.archivo_largo)
-    datos[0x04:0x13] = b"INAZUMA_ELEVEN2"
+    datos[0x04:0x12] = b"INAZUMA_ELEVEN"
     struct.pack_into("<I", datos, formato.espacio_largo * 2 + pt.OFF_MARCA, pt.MARCA)
     p = pt.Partida(bytes(datos), formato, espacio=2)
     assert p.ocupado and not pt.Partida(bytes(datos), formato, espacio=0).ocupado
-    p.sellar()
-    assert p.sumas_correctas()["datos"] and p.sumas_correctas()["info"]
+    assert p.sumas_correctas()["info"] is False
     with pytest.raises(ValueError):
         pt.Partida(bytes(datos), formato, espacio=3)
+    with pytest.raises(ValueError):
+        pt.Partida(bytes(pt.FORMATOS["ie2.123"].archivo_largo), pt.FORMATOS["ie2.123"], espacio=1)
 
 
 def test_modo_equilibrado_topa_nivel_y_recalcula_exp():
@@ -121,7 +122,8 @@ def test_modo_equilibrado_topa_nivel_y_recalcula_exp():
     tr.traspasar(ie2, ie3, {1: 1, 2: 2}, op)
     _, a, b = ie3.jugadores()
     assert (a.nivel, a.exp) == (25, tr.exp_minima(curvas, 0, 25))
-    assert (b.nivel, b.exp) == (12, 1500)
+    # La EXP se recalcula con la curva del juego de destino aunque el nivel no cambie.
+    assert (b.nivel, b.exp) == (12, tr.exp_minima(curvas, 0, 12))
 
 
 def test_modo_solo_fichajes_exige_nivel_y_curva():
@@ -164,3 +166,43 @@ def test_opciones_incompletas_fallan_antes_de_tocar_la_partida():
     assert bytes(ie3.datos) == antes
     with pytest.raises(ValueError, match="modo desconocido"):
         tr.traspasar(ie2, ie3, {1: 1}, tr.Opciones(modo="otro"))
+
+
+def test_tecnicas_aprendidas_en_el_juego_nuevo_mas_las_que_traia():
+    aprende = {5: [(0x10, 1), (0x20, 15), (0x30, 40), (0x40, 100)], 1: [(0xA2, 1), (0xB6, 30)]}
+
+    def aprendidas(id_, nivel):
+        return [t for t, lv in aprende.get(id_, []) if lv < 100 and lv <= nivel]
+
+    op = tr.Opciones(modo=tr.COMPLETA, exp_de_nivel=lambda id_, n: n * n, aprendidas=aprendidas)
+    ie1 = _partida("ie1.123", [(5, 20, 0, [0x92]), (1, 35, 0, [])])
+    ie2 = _partida("ie2.123", [(1, 10, 100, [0xA2])])
+    tr.traspasar(ie1, ie2, {5: 5, 1: 1}, op)
+    mark, nuevo = ie2.jugadores()
+    # Mark ya estaba: sube a 35 y aprende la Mano Mágica del IE2 (nivel 30).
+    assert (mark.nivel, mark.exp, mark.tecnicas[:2]) == (35, 35 * 35, (0xA2, 0xB6))
+    # El nuevo llega con lo que sabe a nivel 20 en el IE2 y con la técnica que traía.
+    assert nuevo.tecnicas[:3] == (0x10, 0x20, 0x92) and nuevo.niveles_tecnica[:3] == (0, 0, 1)
+
+
+def test_ficha_del_ie1_tecnicas_de_un_byte_y_nivel_en_0x3e():
+    formato = pt.FORMATOS["ie1.123"]
+    reg = bytearray(formato.jugador_paso)
+    reg[0x04] = 7
+    reg[0x38:0x3B] = bytes([0x92, 0xA2, 0x05])
+    reg[0x3E] = 23
+    j = pt.leer_jugador(bytes(reg), formato)
+    assert (j.id, j.nivel, j.tecnicas[:3], j.niveles_tecnica) == (7, 23, (0x92, 0xA2, 5), (0,) * 6)
+    assert pt.escribir_jugador(j, formato) == bytes(reg)
+
+
+def test_fusion_por_personaje_no_duplica_a_quien_tiene_varias_fichas():
+    personaje = {10: "Axel Blaze", 1097: "Axel Blaze", 11: "Kevin Dragonfly"}
+    op = tr.Opciones(modo=tr.COMPLETA, exp_de_nivel=lambda id_, n: 10 * n, clave_destino=personaje.get)
+    ie1 = _partida("ie1.123", [(10, 30, 0, []), (11, 20, 0, [])])
+    ie2 = _partida("ie2.123", [(1097, 5, 50, [0x65])])
+    informe = tr.traspasar(ie1, ie2, {10: 10, 11: 11}, op)
+    assert informe.mejorados == [(10, 10)] and informe.traspasados == [(11, 11)]
+    axel, kevin = ie2.jugadores()
+    # Axel sigue siendo la ficha 1097 del IE2, ahora a nivel 30.
+    assert (axel.id, axel.nivel, axel.exp) == (1097, 30, 300) and kevin.id == 11

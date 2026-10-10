@@ -102,6 +102,27 @@ def emparejar(origen: list[Jugador], destino: list[Jugador]) -> dict[int, tuple[
     return salida
 
 
+def emparejar_por_cara(origen: list[Jugador], destino: list[Jugador]) -> dict[int, int]:
+    """Origen → destino por cara, entre jugadores jugables. Es el criterio de la recopilación de 3DS.
+
+    En el 3DS la cara es única entre los jugables de cada juego (IE2 → IE3: 1707 con un candidato,
+    15 sin ninguno) y los nombres no sirven: cada juego los guarda con otro formato. Si una cara tuviera
+    varios candidatos, se elige la misma posición y, si no, la ficha más baja.
+    """
+    por_cara: dict[int, list[Jugador]] = defaultdict(list)
+    for j in destino:
+        if j.identidad.cara and j.crecimiento.jugable:
+            por_cara[j.identidad.cara].append(j)
+    salida = {}
+    for j in origen:
+        candidatos = por_cara.get(j.identidad.cara) if j.identidad.cara and j.crecimiento.jugable else None
+        if not candidatos:
+            continue
+        misma = [c for c in candidatos if c.identidad.posicion == j.identidad.posicion]
+        salida[j.indice] = min(misma or candidatos, key=lambda c: c.indice).indice
+    return salida
+
+
 def mismo_indice(ie1: list[Jugador], ie2: list[Jugador]) -> dict[int, int]:
     """IE2 → IE1 cuando la ficha del mismo índice es el mismo jugador (nombre o cara)."""
     salida = {}
