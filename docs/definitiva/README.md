@@ -102,8 +102,9 @@ en `/luma/titles/00040000000BB800/` y el plugin en `/luma/plugins/00040000000BB8
 - Partida larga de prueba: pasar por los tres juegos de principio a fin en la AYN Thor.
 - La convocatoria de Inazuma Japón (32011000) en una partida de verdad: la primera de la historia (32010200) ya
   se ha visto.
-- Límite conocido: el plugin reconoce la plantilla con 4 jugadores o más; con menos (Mark solo tras el prólogo
-  del IE3) devuelve lo suyo en cuanto la historia une a los siguientes.
+- Límite conocido: el plugin reconoce la plantilla con 4 jugadores o más en la partida (grupo y reserva). Tras
+  un traspaso casi nunca se nota (los que esperan en la reserva cuentan); sin él, tras el prólogo del IE3 Mark
+  está solo y las ayudas de la plantilla vuelven en cuanto la historia une a los siguientes.
 - Ver en una partida que los jugadores y objetos desbloqueados por StreetPass aparecen desde su capítulo (#8, #10).
 - Revisar con el equipo de la traducción los títulos acortados (#14).
 
