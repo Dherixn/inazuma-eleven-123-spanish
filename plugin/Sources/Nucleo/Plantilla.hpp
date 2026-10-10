@@ -30,6 +30,10 @@ namespace Definitiva {
         uint32_t maxJugadores;
         uint32_t offPePt;   // máximos de PE y PT, desde el comienzo de la plantilla
         uint32_t pasoPePt;
+        // Byte que el juego pone a 1 en las fichas de los rivales de un partido. En el IE2 las deja justo detrás de
+        // tu plantilla, en la misma tabla (medido en un duelo: 18 tuyos y detrás los 4 rivales): sin esto, las ayudas
+        // los tomaban por jugadores tuyos. 0 = el juego no hace eso.
+        uint32_t offRival;
     };
 
     extern const GeometriaPlantilla GEO_IE1, GEO_IE2, GEO_IE3;

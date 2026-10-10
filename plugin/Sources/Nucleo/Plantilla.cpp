@@ -2,9 +2,9 @@
 
 namespace Definitiva {
 
-    const GeometriaPlantilla GEO_IE1 = {0x188, 0x3E, 32, 0xAC, 0x188};
-    const GeometriaPlantilla GEO_IE2 = {0xFC, 0x4A, 100, 0x70, 0xFC};
-    const GeometriaPlantilla GEO_IE3 = {0x6C, 0x4A, 100, 0xCA6C, 0x98};
+    const GeometriaPlantilla GEO_IE1 = {0x188, 0x3E, 32, 0xAC, 0x188, 0};
+    const GeometriaPlantilla GEO_IE2 = {0xFC, 0x4A, 100, 0x70, 0xFC, 0x56};
+    const GeometriaPlantilla GEO_IE3 = {0x6C, 0x4A, 100, 0xCA6C, 0x98, 0};
 
     namespace {
         constexpr uint32_t EXP_IMPOSIBLE = 50000000;
@@ -27,7 +27,7 @@ namespace Definitiva {
 
     bool RegistroValido(const uint8_t *reg, const GeometriaPlantilla &g, const JuegoDatos &t, bool estricto) {
         uint8_t nivel = reg[g.offNivel];
-        if (nivel < 1 || nivel > 99)
+        if (nivel < 1 || nivel > 99 || (g.offRival && reg[g.offRival] != 0))
             return false;
         uint16_t numero = U16(reg + 4);
         int ficha = numero ? t.Ficha(numero) : -1;

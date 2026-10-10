@@ -184,6 +184,30 @@ namespace Definitiva {
 
         bool Escribible(u32 dir, u32 largo) { return Process::CheckAddress(dir) && Process::CheckAddress(dir + largo - 1); }
 
+        // Fichas de tu plantilla desde `base`. En los partidos, el IE1 y el IE2 ponen detrás de tu plantilla, en la
+        // misma tabla, las fichas de quien juega contigo sin ser del equipo y las de los rivales. En el IE2 llevan un
+        // byte de rival (GeometriaPlantilla::offRival) y la cuenta se para sola. En el IE1 no llevan marca, pero cada
+        // ficha tiene su puesto en la tabla en +0x7A y el número de jugadores de tu plantilla va 0x20 bytes antes de
+        // la tabla (medido en un duelo: 6, los de la partida, con Nathan y seis rivales en los puestos 6 a 12). Si la
+        // búsqueda cayó en una ficha de detrás (pasa si las tuyas no cuadran), no hay plantilla.
+        constexpr u32 OFF_PUESTO_IE1 = 0x7A, OFF_CUENTA_IE1 = 0x20;
+
+        u32 Contar(u32 base, const GeometriaPlantilla &g, const JuegoDatos &t, bool estricto, u32 largo) {
+            u32 n = ContarRegistros(reinterpret_cast<const u8 *>(base), TramoLegible(base, largo), g, t, estricto);
+            if (&g != &GEO_IE1 || !n)
+                return n;
+            u32 puesto = reinterpret_cast<const u8 *>(base)[OFF_PUESTO_IE1];
+            u32 tabla = base - puesto * g.paso;
+            if (puesto >= g.maxJugadores || TramoLegible(tabla - OFF_CUENTA_IE1, OFF_CUENTA_IE1) != OFF_CUENTA_IE1)
+                return n;
+            u32 cuenta = *reinterpret_cast<const u8 *>(tabla - OFF_CUENTA_IE1);
+            if (cuenta < 1 || cuenta > g.maxJugadores)
+                return n;
+            if (puesto >= cuenta)
+                return 0;
+            return n < cuenta - puesto ? n : cuenta - puesto;
+        }
+
         // La partida cambia (otra cargada, vuelta al título...): se guarda la memoria y se vuelve a buscar todo.
         void Olvidar() {
             gBase = 0;
@@ -413,7 +437,7 @@ namespace Definitiva {
         if (!gBase || !t || !gPartidaMemoria)
             return salida;
         const GeometriaPlantilla &g = *inf.geo;
-        u32 n = ContarRegistros(reinterpret_cast<const u8 *>(gBase), TramoLegible(gBase, g.paso * g.maxJugadores), g, *t, false);
+        u32 n = Contar(gBase, g, *t, false, g.paso * g.maxJugadores);
         for (u32 i = 0; i < n; ++i) {
             const u8 *r = reinterpret_cast<const u8 *>(gBase + i * g.paso);
             u16 tecnicas[NUM_HUECOS];
@@ -434,7 +458,7 @@ namespace Definitiva {
             return -1;
         const GeometriaPlantilla &g = *inf.geo;
         bool u8Tecnicas = &g == &GEO_IE1;
-        u32 n = ContarRegistros(reinterpret_cast<const u8 *>(gBase), TramoLegible(gBase, g.paso * g.maxJugadores), g, *t, false);
+        u32 n = Contar(gBase, g, *t, false, g.paso * g.maxJugadores);
         for (u32 i = 0; i < n; ++i) {
             u8 *r = reinterpret_cast<u8 *>(gBase + i * g.paso);
             if (static_cast<u16>(r[4] | r[5] << 8) != numero || !Escribible(reinterpret_cast<u32>(r), g.paso))
@@ -501,7 +525,7 @@ namespace Definitiva {
             return 0;
         const GeometriaPlantilla &g = *inf.geo;
         u32 base = gBase;
-        if (!base || ContarRegistros(reinterpret_cast<const u8 *>(base), TramoLegible(base, g.paso * MINIMO), g, *t) < MINIMO) {
+        if (!base || Contar(base, g, *t, true, g.paso * MINIMO) < MINIMO) {
             base = 0;
             for (u32 cursor = 0; cursor < inf.largo && !base;) {
                 u32 inicio = inf.zona + cursor, largo = TROZO + g.paso * MINIMO;
@@ -552,8 +576,7 @@ namespace Definitiva {
             return;
         const GeometriaPlantilla &g = *inf.geo;
         if (gBase) {
-            u32 tramo = TramoLegible(gBase, g.paso * g.maxJugadores);
-            u32 n = ContarRegistros(reinterpret_cast<const u8 *>(gBase), tramo, g, *t, false);
+            u32 n = Contar(gBase, g, *t, false, g.paso * g.maxJugadores);
             gEstado[6] = n;
             if (n >= MINIMO) {
                 if (recordar) {

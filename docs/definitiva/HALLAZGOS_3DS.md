@@ -159,6 +159,15 @@ largas por si hubiera algo sin nombre.
   niveles en +0x44). Comprobado en los tres juegos con los nombres de `command.dat`.
 - Para buscarla, la EXP tiene que estar entre la de su nivel y la de dos niveles más; una vez encontrada,
   la cuenta no mira el tope (un jugador con EXP de más no deja sin ayudas a los de detrás).
+- **En los partidos, el IE1 y el IE2 ponen detrás de tu plantilla, en la misma tabla, las fichas de los
+  rivales** (y de quien juega contigo sin ser del equipo, como Nathan en el primer duelo del IE1), y ahí se
+  quedan después. Antes del arreglo, el plugin las contaba como tuyas: la memoria del equipo apuntaba a los
+  rivales y los «devolvía» a su nivel más alto, PE y PT llenos también para ellos, y «a tu nivel» los metía
+  en la media. IE2: la ficha de partido es la misma que la de la plantilla (cada 0xFC) y la de los rivales
+  lleva un 1 en +0x56 (medido: 18 tuyos y detrás 4 rivales del duelo del Raimon). IE1: sin marca, pero cada
+  ficha lleva su puesto en +0x7A y el número de jugadores de tu plantilla va 0x20 bytes antes de la tabla
+  (medido: 6, los de la partida, con Nathan y seis rivales en los puestos 6 a 12). IE3 y Ogro: la plantilla
+  es la copia de la partida (cada 0x6C), donde el juego no pone rivales.
 
 ## Contenido de conexión (por estudiar)
 

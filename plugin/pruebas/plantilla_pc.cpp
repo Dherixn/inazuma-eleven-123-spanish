@@ -66,6 +66,15 @@ static void Sinteticos() {
     assert(ContarRegistros(&zona[inicio], zona.size() - inicio, g, t) == 2);
     assert(ContarRegistros(&zona[inicio], zona.size() - inicio, g, t, false) == 2);
     assert(BuscarPlantilla(zona.data(), zona.size(), g, t) == -1);
+    P32(&zona[inicio + 2 * g.paso], 100u * 12 * 12 + 5);
+    // IE2: detrás de la plantilla, las fichas de los rivales del partido (byte de rival a 1): no son tuyos.
+    assert(g.offRival == 0x56);
+    zona[inicio + 4 * g.paso + g.offRival] = 1;
+    assert(ContarRegistros(&zona[inicio], zona.size() - inicio, g, t) == 4);
+    assert(ContarRegistros(&zona[inicio], zona.size() - inicio, g, t, false) == 4);
+    assert(BuscarPlantilla(zona.data(), zona.size(), g, t) == static_cast<long>(inicio));
+    zona[inicio + 4 * g.paso + g.offRival] = 0;
+    assert(ContarRegistros(&zona[inicio], zona.size() - inicio, g, t) == 6);
 
     uint8_t actuales[4], maximos[4];
     P16(actuales, 37); P16(actuales + 2, 41); P16(maximos, 75); P16(maximos + 2, 85);
