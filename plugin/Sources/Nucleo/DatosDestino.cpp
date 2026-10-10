@@ -189,4 +189,54 @@ namespace Definitiva {
         return salida;
     }
 
+    namespace {
+        // Nombres de relleno («？？？»): varios personajes distintos lo comparten, no identifican a nadie.
+        bool Provisional(const uint8_t *nombre, size_t ancho) {
+            bool alguno = false;
+            for (size_t k = 0; k < ancho && nombre[k];) {
+                if (k + 1 < ancho && nombre[k] == 0x81 && (nombre[k + 1] == 0x48 || nombre[k + 1] == 0x40)) {
+                    alguno |= nombre[k + 1] == 0x48;
+                    k += 2;
+                } else if (nombre[k] == '?' || nombre[k] == ' ') {
+                    alguno |= nombre[k] == '?';
+                    ++k;
+                } else {
+                    return false;
+                }
+            }
+            return alguno;
+        }
+    }
+
+    std::vector<Par> PreferirAltas(const std::vector<Par> &pares, const JuegoDatos &destino,
+                                   const std::vector<uint16_t> &altas) {
+        auto enAltas = [&altas](uint16_t n) { return std::binary_search(altas.begin(), altas.end(), n); };
+        std::vector<size_t> candidatas;  // jugables que la historia ficha, en orden de ficha
+        for (size_t i = 0; i < destino.Fichas(); ++i)
+            if (destino.Jugable(i) && enAltas(destino.Numero(i)))
+                candidatas.push_back(i);
+        std::vector<Par> salida = pares;
+        for (Par &p : salida) {
+            if (enAltas(p.destino))
+                continue;
+            int f = destino.Ficha(p.destino);
+            if (f < 0 || Provisional(destino.NombreCrudo(static_cast<size_t>(f)), destino.AnchoNombre()))
+                continue;
+            uint32_t clave = destino.Clave(p.destino);
+            size_t misma = SIZE_MAX, cualquiera = SIZE_MAX;
+            for (size_t i : candidatas) {
+                if (destino.Clave(destino.Numero(i)) != clave)
+                    continue;
+                if (cualquiera == SIZE_MAX)
+                    cualquiera = i;
+                if (misma == SIZE_MAX && destino.Posicion(i) == destino.Posicion(static_cast<size_t>(f)))
+                    misma = i;
+            }
+            size_t elegida = misma != SIZE_MAX ? misma : cualquiera;
+            if (elegida != SIZE_MAX)
+                p.destino = destino.Numero(elegida);
+        }
+        return salida;
+    }
+
 }

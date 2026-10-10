@@ -56,6 +56,16 @@ JUEGO_DE_FORMATO = {"ie1.123": ("inazuma1", "3ds.ie1"), "ie2.123": ("inazuma2", 
                     "ie3.123": ("inazuma3", "3ds.ie3")}
 
 
+def _altas(args: argparse.Namespace, logica: Path, juego: str) -> set[int]:
+    """Altas de la historia del juego: de ``--fa`` si se da, si no de los scripts extraídos en ``--logica``."""
+    from ie123kit.definitiva import altas as altas_mod
+    if args.fa:
+        from ie123kit.nucleo.contenedores.fa import FaArchive
+        fa = FaArchive(str(args.fa))
+        return altas_mod.altas(lambda ruta: fa.read(ruta) if fa.exists(ruta) else None, juego)
+    return altas_mod.altas(lambda ruta: (logica / ruta).read_bytes() if (logica / ruta).is_file() else None, juego)
+
+
 def _traspasar(args: argparse.Namespace) -> int:
     """Traspaso de partida con las tablas de 3DS (``--logica``: carpeta con inazumaN/data_iz/logic)."""
     logica = Path(args.logica)
@@ -76,7 +86,15 @@ def _traspasar(args: argparse.Namespace) -> int:
     datos_o = datos_juego.cargar(carpeta_o, fichas.PERFILES[p_o])
     datos = datos_juego.cargar(carpeta_d, fichas.PERFILES[p_d])
     # La partida guarda números de jugador; la tabla por cara va de ficha a ficha.
-    mapa = datos_juego.mapa_de_numeros(identidades.emparejar_por_cara(jug_o, jug_d), datos_o, datos)
+    por_ficha = identidades.emparejar_por_cara(jug_o, jug_d)
+    # La ficha que la historia del juego nuevo vuelve a fichar (Jude, en el IE3, es la 30), como el plugin.
+    altas = _altas(args, logica, j_d)
+    if altas:
+        por_ficha = identidades.preferir_altas(por_ficha, jug_d, datos, altas)
+    else:
+        print("aviso: sin los eventos del juego de destino (--fa o inazumaN/data_iz/script en --logica); "
+              "el traspaso no puede saber qué ficha vuelve a fichar la historia")
+    mapa = datos_juego.mapa_de_numeros(por_ficha, datos_o, datos)
     op = traspaso.Opciones(
         modo=args.modo,
         nivel_tope=args.nivel if args.modo == traspaso.EQUILIBRADA else None,
@@ -129,6 +147,7 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(func=_identidades)
     t = sub.add_parser("traspasar", help="lleva los fichajes de una partida al juego siguiente")
     t.add_argument("--logica", required=True)
+    t.add_argument("--fa", help="archive.fa del que leer los eventos del juego de destino (si no están en --logica)")
     t.add_argument("--origen", required=True)
     t.add_argument("--destino", required=True)
     t.add_argument("--espacio-origen", type=int, default=1)

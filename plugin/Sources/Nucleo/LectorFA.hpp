@@ -18,6 +18,10 @@ namespace Definitiva {
         bool Abrir(LeerBytes leer, void *contexto);
         // Lee el archivo `ruta` ("inazuma2/data_iz/logic/unitbase.dat"); false si no está.
         bool Leer(const std::string &ruta, std::vector<uint8_t> &salida) const;
+        // Dónde está `ruta` dentro de archive.fa, para leerlo a trozos (eve.pkb mide más que la memoria del
+        // plugin), y la lectura de un tramo.
+        bool Localizar(const std::string &ruta, uint64_t *offset, uint32_t *largo) const;
+        bool LeerTramo(uint64_t offset, uint32_t largo, uint8_t *salida) const;
 
     private:
         LeerBytes leer_ = nullptr;

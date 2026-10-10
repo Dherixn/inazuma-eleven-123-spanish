@@ -10,6 +10,7 @@
 #include <CTRPluginFramework.hpp>
 
 #include "Nucleo/LectorFA.hpp"
+#include "Nucleo/Eventos.hpp"
 #include "Nucleo/NombreSjis.hpp"
 
 using namespace CTRPluginFramework;
@@ -116,6 +117,29 @@ namespace Definitiva {
                 nombres[i] = DecodificarNombre(&str[desde], std::min<size_t>(64, str.size() - desde));
         }
         return &(cache[juego] = std::move(nombres));
+    }
+
+    const std::vector<uint16_t> *AltasDe(const std::string &juego) {
+        Bloqueo bloqueo;
+        static std::map<std::string, std::vector<uint16_t>> cache;
+        auto it = cache.find(juego);
+        if (it != cache.end())
+            return &it->second;
+        Fuente &fuente = LaFuente();
+        if (!fuente.Abrir())
+            return nullptr;
+        std::vector<uint16_t> altas;
+        bool leidas = false;
+        if (juego == "inazuma2") {  // los eventos de Ventisca van aparte
+            leidas |= AltasDeEventos(fuente.fa, "inazuma2/data_iz/script", altas);
+            leidas |= AltasDeEventos(fuente.fa, "inazuma2/data_iz_blizzard/script", altas);
+        } else {
+            leidas = AltasDeEventos(fuente.fa, juego + "/data_iz/script", altas);
+        }
+        if (!leidas)
+            return nullptr;
+        Normalizar(altas);
+        return &(cache[juego] = std::move(altas));
     }
 
     std::string NombreDeJugador(const std::string &juego, const PerfilJuego &perfil, uint16_t numero) {

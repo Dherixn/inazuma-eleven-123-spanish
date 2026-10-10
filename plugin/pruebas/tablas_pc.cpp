@@ -2,10 +2,12 @@
 // con las de ie123kit (plugin/pruebas/comparar_tablas.py). Uso: tablas_pc archive.fa > salida.txt
 
 #include <cstdio>
+#include <initializer_list>
 #include <string>
 #include <vector>
 
 #include "../Sources/Nucleo/DatosDestino.hpp"
+#include "../Sources/Nucleo/Eventos.hpp"
 #include "../Sources/Nucleo/LectorFA.hpp"
 
 using namespace Definitiva;
@@ -38,6 +40,25 @@ static void Volcar(const char *nombre, const JuegoDatos &d) {
     }
 }
 
+// Altas de la historia de un juego (el IE2 tiene los eventos de Ventisca aparte), como TablasJuego::AltasDe.
+static std::vector<uint16_t> Altas(const LectorFA &fa, const char *nombre, std::initializer_list<const char *> carpetas) {
+    std::vector<uint16_t> altas;
+    for (const char *c : carpetas)
+        AltasDeEventos(fa, c, altas);
+    Normalizar(altas);
+    std::printf("ALTAS %s", nombre);
+    for (uint16_t n : altas)
+        std::printf(" %u", n);
+    std::printf("\n");
+    return altas;
+}
+
+static void Pares(const char *nombre, const JuegoDatos &origen, const JuegoDatos &destino,
+                  const std::vector<uint16_t> &altas) {
+    for (const auto &p : PreferirAltas(EmparejarPorCara(origen, destino), destino, altas))
+        std::printf("PAR %s %u %u\n", nombre, p.origen, p.destino);
+}
+
 int main(int argc, char **argv) {
     FILE *f = argc > 1 ? std::fopen(argv[1], "rb") : nullptr;
     LectorFA fa;
@@ -51,12 +72,13 @@ int main(int argc, char **argv) {
         std::fprintf(stderr, "faltan tablas\n");
         return 2;
     }
-    for (const auto &p : EmparejarPorCara(ie1, ie2))
-        std::printf("PAR IE1_IE2 %u %u\n", p.origen, p.destino);
-    for (const auto &p : EmparejarPorCara(ie2, ie3))
-        std::printf("PAR IE2_IE3 %u %u\n", p.origen, p.destino);
-    for (const auto &p : EmparejarPorCara(ie2, ogro))
-        std::printf("PAR IE2_OGRO %u %u\n", p.origen, p.destino);
+    std::vector<uint16_t> a2 = Altas(fa, "IE2", {"inazuma2/data_iz/script", "inazuma2/data_iz_blizzard/script"});
+    std::vector<uint16_t> a3 = Altas(fa, "IE3", {"inazuma3/data_iz/script"});
+    std::vector<uint16_t> ao = Altas(fa, "OGRO", {"inazuma3_ogre/data_iz/script"});
+    Pares("IE1_IE2", ie1, ie2, a2);
+    Pares("IE2_IE3", ie2, ie3, a3);
+    Pares("IE2_OGRO", ie2, ogro, ao);
+    Pares("IE3_OGRO", ie3, ogro, ao);
     Volcar("IE2", ie2);
     Volcar("IE3", ie3);
     Volcar("OGRO", ogro);

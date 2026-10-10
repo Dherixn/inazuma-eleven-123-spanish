@@ -16,7 +16,9 @@ AQUI = Path(__file__).resolve().parent
 PLUGIN = AQUI.parent
 sys.path.insert(0, str(PLUGIN.parent / "tools" / "src"))
 
+from ie123kit.definitiva import altas as altas_mod
 from ie123kit.definitiva import datos_juego, fichas, identidades
+from ie123kit.nucleo.contenedores.fa import FaArchive
 
 
 def cargar(logica: Path, juego: str, perfil: str):
@@ -27,13 +29,21 @@ def cargar(logica: Path, juego: str, perfil: str):
     return identidades.jugadores(ident, crec), datos_juego.cargar(carpeta, p)
 
 
-def volcado_python(logica: Path) -> list[str]:
+def volcado_python(logica: Path, archive: Path) -> list[str]:
     (j1, d1), (j2, d2), (j3, d3), (jo, do) = (cargar(logica, j, p) for j, p in (
         ("inazuma1", "3ds.ie1"), ("inazuma2", "3ds.ie2"), ("inazuma3", "3ds.ie3"), ("inazuma3_ogre", "3ds.ie3")))
-    lineas = []
-    for nombre, (jo_, do_), (jd_, dd_) in (("IE1_IE2", (j1, d1), (j2, d2)), ("IE2_IE3", (j2, d2), (j3, d3)),
-                                           ("IE2_OGRO", (j2, d2), (jo, do))):
-        pares = datos_juego.mapa_de_numeros(identidades.emparejar_por_cara(jo_, jd_), do_, dd_)
+    fa = FaArchive(str(archive))
+    leer = lambda ruta: fa.read(ruta) if fa.exists(ruta) else None  # noqa: E731
+    lineas, altas = [], {}
+    for nombre, juego in (("IE2", "inazuma2"), ("IE3", "inazuma3"), ("OGRO", "inazuma3_ogre")):
+        altas[nombre] = altas_mod.altas(leer, juego)
+        lineas.append(" ".join([f"ALTAS {nombre}", *map(str, sorted(altas[nombre]))]))
+    for nombre, (jo_, do_), (jd_, dd_), a in (("IE1_IE2", (j1, d1), (j2, d2), altas["IE2"]),
+                                              ("IE2_IE3", (j2, d2), (j3, d3), altas["IE3"]),
+                                              ("IE2_OGRO", (j2, d2), (jo, do), altas["OGRO"]),
+                                              ("IE3_OGRO", (j3, d3), (jo, do), altas["OGRO"])):
+        por_ficha = identidades.preferir_altas(identidades.emparejar_por_cara(jo_, jd_), jd_, dd_, a)
+        pares = datos_juego.mapa_de_numeros(por_ficha, do_, dd_)
         lineas += [f"PAR {nombre} {a} {b}" for a, b in sorted(pares.items())]
     for nombre, d in (("IE2", d2), ("IE3", d3), ("OGRO", do)):
         for i, num in enumerate(d.numero):
@@ -49,14 +59,14 @@ def volcado_python(logica: Path) -> list[str]:
 def main() -> int:
     archive, logica = Path(sys.argv[1]).resolve(), Path(sys.argv[2])
     orden = ("g++ -std=c++17 -O1 -Wall -D_GLIBCXX_ASSERTIONS -o /tmp/tablas pruebas/tablas_pc.cpp Sources/Nucleo/LectorFA.cpp "
-             "Sources/Nucleo/DatosDestino.cpp Sources/Nucleo/Partida.cpp && /tmp/tablas /fa/archive.fa")
+             "Sources/Nucleo/DatosDestino.cpp Sources/Nucleo/Partida.cpp Sources/Nucleo/Eventos.cpp && /tmp/tablas /fa/archive.fa")
     r = subprocess.run(["docker", "run", "--rm", "-v", f"{PLUGIN}:/plugin", "-v", f"{archive.parent}:/fa",
                         "definitiva-3gx", "bash", "-c", orden], capture_output=True, text=True, check=False)
     if r.returncode:
         print(r.stdout[-2000:], r.stderr[-2000:])
         return 1
     cpp = [x.rstrip() for x in r.stdout.splitlines()]
-    py = volcado_python(logica)
+    py = volcado_python(logica, archive)
     print(f"C++: {len(cpp)} líneas; Python: {len(py)} líneas")
     distintas = [(a, b) for a, b in zip(cpp, py, strict=False) if a != b]
     for a, b in distintas[:10]:

@@ -144,6 +144,10 @@ namespace Definitiva {
                 return;
             }
             std::vector<Par> pares = EmparejarPorCara(*tablasOrigen, *tablasDestino);
+            // La ficha que la historia del juego nuevo vuelve a fichar (Jude, en el IE3, es la 30): sin
+            // duplicados cuando lo convoque.
+            if (const std::vector<uint16_t> *altas = AltasDe(destino.juego))
+                pares = PreferirAltas(pares, *tablasDestino, *altas);
             Mapa mapa = {pares.data(), pares.size()};
 
             Opciones op;
@@ -169,13 +173,15 @@ namespace Definitiva {
             const char *puente = TextoPuente(destino.juego, std::string(elegido->juego) == "inazuma3");
             if (*puente)
                 MessageBox("Capítulo siguiente", Ajustar(puente))();
-            Aviso(Utils::Format("Han llegado %u jugadores nuevos (%u al grupo; el resto, a la reserva) y %u ya\n"
-                                "conocidos han mejorado.\n"
-                                "Copia de seguridad: %s\n\n"
-                                "Para verlos, sal al título de %s SIN GUARDAR y pulsa Continuar.",
-                                static_cast<unsigned>(informe.traspasados.size()),
-                                static_cast<unsigned>(informe.alGrupo.size()),
-                                static_cast<unsigned>(informe.mejorados.size()), copia.c_str(), destino.nombre));
+            // Corto: el cuadro tiene ocho líneas y la ruta de la copia ya ocupa dos.
+            std::string donde = destino.formato->offGrupo
+                                    ? Utils::Format("%u al grupo y el resto a la reserva",
+                                                    static_cast<unsigned>(informe.alGrupo.size()))
+                                    : std::string("a la reserva: la historia los irá convocando");
+            Aviso(Utils::Format("Llegan %u nuevos (%s) y %u conocidos mejoran.\nCopia: %s\n\n"
+                                "Sal al título SIN GUARDAR y pulsa Continuar.",
+                                static_cast<unsigned>(informe.traspasados.size()), donde.c_str(),
+                                static_cast<unsigned>(informe.mejorados.size()), copia.c_str()));
         }
 
         // Nombres de archivo sacados del código de la recopilación (code.bin descomprimido).

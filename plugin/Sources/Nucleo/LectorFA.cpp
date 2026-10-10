@@ -38,6 +38,19 @@ namespace Definitiva {
     }
 
     bool LectorFA::Leer(const std::string &ruta, std::vector<uint8_t> &salida) const {
+        uint64_t offset;
+        uint32_t largo;
+        if (!Localizar(ruta, &offset, &largo))
+            return false;
+        salida.resize(largo);
+        return LeerTramo(offset, largo, salida.data());
+    }
+
+    bool LectorFA::LeerTramo(uint64_t offset, uint32_t largo, uint8_t *salida) const {
+        return leer_ && leer_(contexto_, offset, largo, salida);
+    }
+
+    bool LectorFA::Localizar(const std::string &ruta, uint64_t *offset, uint32_t *largo) const {
         size_t corte = ruta.rfind('/');
         std::string carpeta = corte == std::string::npos ? std::string() : ruta.substr(0, corte + 1);
         std::string archivo = corte == std::string::npos ? ruta : ruta.substr(corte + 1);
@@ -55,9 +68,9 @@ namespace Definitiva {
                 const uint8_t *f = &entradas[k * ENTRADA_ARCHIVO];
                 if (Nombre(baseNombres + U32(f + 0x04)) != archivo)
                     continue;
-                salida.resize(U32(f + 0x0C));
-                return leer_(contexto_, static_cast<uint64_t>(offDatos_) + U32(f + 0x08),
-                             static_cast<uint32_t>(salida.size()), salida.data());
+                *offset = static_cast<uint64_t>(offDatos_) + U32(f + 0x08);
+                *largo = U32(f + 0x0C);
+                return true;
             }
             return false;
         }

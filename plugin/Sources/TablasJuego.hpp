@@ -15,6 +15,10 @@ namespace Definitiva {
     // Nombres de las técnicas del juego por número (command.dat y command.STR). nullptr si no se pueden leer.
     const std::vector<std::string> *TecnicasDe(const std::string &juego);
 
+    // Números que la historia del juego une al equipo (ordenados; ver Nucleo/Eventos.hpp). Lee todos los
+    // eventos la primera vez (unos segundos); nullptr si no se pueden leer.
+    const std::vector<uint16_t> *AltasDe(const std::string &juego);
+
     // Nombre legible de un jugador para el menú (en IE1/IE2, el del mismo personaje en el IE3).
     std::string NombreDeJugador(const std::string &juego, const PerfilJuego &perfil, uint16_t numero);
 

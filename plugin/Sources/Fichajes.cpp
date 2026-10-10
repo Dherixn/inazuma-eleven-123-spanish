@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include <algorithm>
 #include <map>
 
 #include "Nucleo/NombreSjis.hpp"
@@ -160,18 +161,35 @@ namespace Definitiva {
             if (teclado.Open(buscado) < 0 || buscado.empty())
                 return;
             std::string clave = NormalizarBusqueda(buscado);
+            // Una ficha por personaje: la que la historia une al equipo si la hay (así no se duplica cuando lo
+            // fiche), si no la primera.
+            const std::vector<uint16_t> *altas = AltasDe(e.tablas);
+            auto historia = [altas](uint16_t n) {
+                return altas && std::binary_search(altas->begin(), altas->end(), n);
+            };
             std::vector<size_t> fichas;
             std::vector<std::string> opciones;
-            std::map<uint32_t, bool> vistos;  // una vez por personaje
-            for (size_t i = 0; i < t->Fichas() && opciones.size() < 30; ++i) {
+            std::map<uint32_t, size_t> vistos;  // personaje -> posición en `fichas`
+            for (size_t i = 0; i < t->Fichas(); ++i) {
                 if (!t->Jugable(i) || t->Ficha(t->Numero(i)) != static_cast<int>(i))
                     continue;
                 std::string n = nombre(i);
-                if (NormalizarBusqueda(n).find(clave) == std::string::npos || vistos[t->Clave(t->Numero(i))])
+                if (NormalizarBusqueda(n).find(clave) == std::string::npos)
                     continue;
-                vistos[t->Clave(t->Numero(i))] = true;
+                std::string opcion = Utils::Format("%s (%s)", n.c_str(), POSICION[t->Posicion(i) < 9 ? t->Posicion(i) : 0]);
+                auto visto = vistos.find(t->Clave(t->Numero(i)));
+                if (visto != vistos.end()) {
+                    if (historia(t->Numero(i)) && !historia(t->Numero(fichas[visto->second]))) {
+                        fichas[visto->second] = i;
+                        opciones[visto->second] = opcion;
+                    }
+                    continue;
+                }
+                if (opciones.size() == 30)
+                    continue;  // se sigue mirando por si llega la ficha de la historia de uno ya listado
+                vistos[t->Clave(t->Numero(i))] = fichas.size();
                 fichas.push_back(i);
-                opciones.push_back(Utils::Format("%s (%s)", n.c_str(), POSICION[t->Posicion(i) < 9 ? t->Posicion(i) : 0]));
+                opciones.push_back(opcion);
             }
             if (opciones.empty()) {
                 Aviso("No hay ningún jugador con ese nombre en este juego.");

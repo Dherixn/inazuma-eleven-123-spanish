@@ -123,6 +123,32 @@ def emparejar_por_cara(origen: list[Jugador], destino: list[Jugador]) -> dict[in
     return salida
 
 
+def _provisional(nombre: bytes) -> bool:
+    """Nombres de relleno («？？？»): varios personajes distintos lo comparten, no identifican a nadie."""
+    return bool(nombre) and not nombre.replace(b"\x81\x48", b"").replace(b"?", b"").replace(b" ", b"")
+
+
+def preferir_altas(por_ficha: dict[int, int], destino: list[Jugador], datos, altas: set[int]) -> dict[int, int]:
+    """Si la ficha de destino no es una de las que la historia de ese juego une al equipo (``altas``, ver
+    ``altas.py``) y otra jugable del mismo personaje sí, se usa esa (la de la misma posición y, si no, la
+    primera). Así el traspaso no duplica a quien la historia vuelva a fichar. ``datos``: ``DatosJuego`` del
+    destino. Gemelo de ``PreferirAltas`` (plugin/Sources/Nucleo/DatosDestino.cpp)."""
+    candidatas = [j for j in destino if j.crecimiento.jugable and datos.numero[j.indice] in altas]
+    salida = {}
+    for o, d in por_ficha.items():
+        numero = datos.numero[d]
+        if numero not in altas:
+            f = datos.ficha(numero)
+            clave = datos.personaje(numero)
+            if not _provisional(datos.nombres[f]):
+                hermanos = [j for j in candidatas if datos.personaje(datos.numero[j.indice]) == clave]
+                if hermanos:
+                    misma = [j for j in hermanos if j.identidad.posicion == destino[f].identidad.posicion]
+                    d = (misma or hermanos)[0].indice
+        salida[o] = d
+    return salida
+
+
 def mismo_indice(ie1: list[Jugador], ie2: list[Jugador]) -> dict[int, int]:
     """IE2 → IE1 cuando la ficha del mismo índice es el mismo jugador (nombre o cara)."""
     salida = {}

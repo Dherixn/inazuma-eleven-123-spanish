@@ -73,4 +73,11 @@ namespace Definitiva {
     // Origen → destino por cara entre jugables, en números de jugador y ordenado por origen.
     std::vector<Par> EmparejarPorCara(const JuegoDatos &origen, const JuegoDatos &destino);
 
+    // Si la ficha de destino no es una de las que la historia de ese juego une al equipo (`altas`, ordenadas:
+    // ver Eventos.hpp) y otra jugable del mismo personaje sí, se usa esa (la de la misma posición y, si no,
+    // la primera). Así el traspaso no duplica a quien la historia vuelva a fichar: en el IE3, Jude es la 30 y
+    // no la 1097 de su cara del IE2. Gemelo de identidades.preferir_altas.
+    std::vector<Par> PreferirAltas(const std::vector<Par> &pares, const JuegoDatos &destino,
+                                   const std::vector<uint16_t> &altas);
+
 }
