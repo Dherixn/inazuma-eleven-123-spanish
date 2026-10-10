@@ -79,7 +79,8 @@ namespace Definitiva {
                  0, nullptr},
                 // Sobre la plantilla en memoria (ver PlantillaEnJuego): menos farmeo, todo opcional.
                 {"pept", "PE y PT siempre llenos", nullptr,
-                 "Los PE y PT de todos tus jugadores se mantienen al máximo: se acabó descansar entre partidos.",
+                 "Los PE y PT de todos tus jugadores se mantienen al máximo, también en mitad de los partidos: "
+                 "las supertécnicas no se agotan y se acabó descansar entre partidos.",
                  {{"No", 0}, {"Sí", 1}}, 0, nullptr},
                 {"exp", "Experiencia", nullptr,
                  "Multiplica la EXP que gana cada jugador. El juego sube de nivel al acabar el partido, así que "

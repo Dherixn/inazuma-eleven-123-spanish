@@ -3,6 +3,7 @@
     python plugin/pruebas/azahar_ctl.py iniciar
     python plugin/pruebas/azahar_ctl.py pulsar A [ms]          # A B X Y L R START SELECT ARRIBA ABAJO IZQ DER
     python plugin/pruebas/azahar_ctl.py secuencia "A:120 espera:800 ABAJO A"
+    python plugin/pruebas/azahar_ctl.py toque 160 108             # pantalla de abajo, 320 × 240
     python plugin/pruebas/azahar_ctl.py captura salida.png [abajo]
     python plugin/pruebas/azahar_ctl.py leer 0x08000000 64
     python plugin/pruebas/azahar_ctl.py cerrar
@@ -93,6 +94,50 @@ def pulsar(boton: str, ms: int = 120) -> None:
     user32.PostMessageW(hwnd, WM_KEYUP, vk, 1 | (scan << 16) | extendida | (0xC0 << 24))
 
 
+WM_MOUSEMOVE, WM_LBUTTONDOWN, WM_LBUTTONUP, MK_LBUTTON = 0x0200, 0x0201, 0x0202, 0x0001
+
+
+def _zonas_de_pintado(hwnd: int) -> list[int]:
+    """Las ventanas hijas donde Azahar pinta las pantallas: las visibles más grandes, sin contar la superficie
+    de OpenGL (clase …OwnDC…, que sobresale de la ventana y no recibe el ratón)."""
+    hijas = []
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    def cada(h, _):
+        r = wintypes.RECT()
+        clase = ctypes.create_unicode_buffer(128)
+        user32.GetClassNameW(h, clase, 128)
+        if user32.IsWindowVisible(h) and "OwnDC" not in clase.value and user32.GetClientRect(h, ctypes.byref(r)):
+            hijas.append(((r.right - r.left) * (r.bottom - r.top), h))
+        return True
+
+    user32.EnumChildWindows(hwnd, cada, 0)
+    if not hijas:
+        return [hwnd]
+    mayor = max(a for a, _ in hijas)
+    return [h for a, h in hijas if a == mayor]
+
+
+def toque(x: int, y: int, ms: int = 120) -> None:
+    """Toca la pantalla de abajo en (x, y) de la consola (320 × 240), con la disposición por defecto de Azahar
+    (las dos pantallas apiladas y escaladas a lo que quepa)."""
+    zonas = _zonas_de_pintado(_ventana())
+    r = wintypes.RECT()
+    user32.GetClientRect(zonas[0], ctypes.byref(r))
+    ancho, alto = r.right - r.left, r.bottom - r.top
+    escala = min(ancho / 400, alto / 480)
+    x0 = (ancho - 320 * escala) / 2
+    y0 = (alto - 480 * escala) / 2 + 240 * escala
+    px, py = int(x0 + x * escala), int(y0 + y * escala)
+    punto = (py << 16) | (px & 0xFFFF)
+    for hwnd in zonas:
+        user32.PostMessageW(hwnd, WM_MOUSEMOVE, 0, punto)
+        user32.PostMessageW(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, punto)
+    time.sleep(ms / 1000)
+    for hwnd in zonas:
+        user32.PostMessageW(hwnd, WM_LBUTTONUP, 0, punto)
+
+
 def secuencia(texto: str) -> None:
     """Pasos separados por espacios: BOTON, BOTON:ms o espera:ms."""
     for paso in texto.split():
@@ -132,6 +177,8 @@ def main(argv: list[str]) -> None:
         pulsar(resto[0], int(resto[1]) if len(resto) > 1 else 120)
     elif orden == "secuencia":
         secuencia(resto[0])
+    elif orden == "toque":
+        toque(int(resto[0]), int(resto[1]))
     elif orden == "captura":
         captura(resto[0], len(resto) > 1 and resto[1] == "abajo")
     elif orden == "leer":
