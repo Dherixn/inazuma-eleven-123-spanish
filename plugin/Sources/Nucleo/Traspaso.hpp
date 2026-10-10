@@ -57,4 +57,12 @@ namespace Definitiva {
     // Copia los fichajes de `origen` en `destino` (en memoria; después hay que sellar).
     Informe Traspasar(const Partida &origen, Partida &destino, const Mapa &mapa, const Opciones &op);
 
+    enum class Fichaje { Hecho, YaEsta, SinSitio, SinPlantilla, OpcionesIncompletas };
+
+    // Fichaje especial (Aiden Froste): un jugador nuevo con ese nivel, la EXP mínima de ese nivel y las
+    // técnicas que sabe a ese nivel. Los campos sin interpretar salen de `plantilla` (un jugador de la
+    // misma partida; nullptr = el primero). Gemelo de traspaso.fichar.
+    Fichaje Fichar(Partida &destino, uint16_t numero, uint8_t nivel, const Opciones &op,
+                   const std::vector<uint8_t> *plantilla = nullptr, uint32_t *indice = nullptr);
+
 }

@@ -207,3 +207,34 @@ def test_fusion_por_personaje_no_duplica_a_quien_tiene_varias_fichas():
     axel, kevin = ie2.jugadores()
     # Axel sigue siendo la ficha 1097 del IE2, ahora a nivel 30.
     assert (axel.id, axel.nivel, axel.exp) == (1097, 30, 300) and kevin.id == 11
+
+
+def _op_fichaje(**cambios):
+    return tr.Opciones(exp_de_nivel=lambda n, nv: 100 * nv * nv, aprendidas=lambda n, nv: [0x105, 0x66][: nv // 12 + 1],
+                       **cambios)
+
+
+def test_fichar_anade_con_nivel_exp_y_tecnicas_y_plantilla_de_la_partida():
+    p = _partida("ie2.123", [(2337, 40, 12345, [0x105, 0x114])])
+    shawn = p.jugadores()[0]
+    k = tr.fichar(p, 1307, 40, _op_fichaje(), plantilla=shawn.crudo)
+    assert k == 1 and p.num_jugadores == 2
+    aiden = p.jugadores()[1]
+    assert (aiden.id, aiden.nivel, aiden.exp) == (1307, 40, 160000)
+    assert aiden.tecnicas[:2] == (0x105, 0x66) and aiden.tecnicas[2:] == (0,) * 4
+    assert aiden.crudo[0x10:0x12] == b"\xAA\xBB"  # los campos sin interpretar, de la plantilla
+    p.sellar()
+    p.validar()
+
+
+def test_fichar_no_duplica_ni_pasa_del_maximo():
+    p = _partida("ie2.123", [(2337, 40, 0, []), (1307, 20, 0, [])])
+    with pytest.raises(tr.FichajeError, match="ya_esta"):
+        tr.fichar(p, 1307, 40, _op_fichaje())
+    with pytest.raises(tr.FichajeError, match="ya_esta"):  # la clave manda (variantes de un mismo personaje)
+        tr.fichar(p, 999, 40, _op_fichaje(clave_destino=lambda n: "aiden" if n in (999, 1307) else n))
+    lleno = _partida("ie1.123", [(i, 1, 0, []) for i in range(1, 33)])
+    with pytest.raises(tr.FichajeError, match="sin_sitio"):
+        tr.fichar(lleno, 1307, 10, _op_fichaje())
+    with pytest.raises(tr.FichajeError, match="opciones"):
+        tr.fichar(p, 5, 10, tr.Opciones())

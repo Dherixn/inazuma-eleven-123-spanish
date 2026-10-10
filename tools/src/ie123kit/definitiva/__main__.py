@@ -3,6 +3,7 @@
     python -m ie123kit.definitiva identidades --ie1 DIR --ie2 DIR --ie3 DIR -o salida.csv
     python -m ie123kit.definitiva traspasar --logica DIR --origen ina1_save.dat --destino ina2F_save.dat \
         [--espacio-origen 1] [--modo completa|equilibrada|solo_fichajes] [--nivel N] -o salida.dat
+    python -m ie123kit.definitiva construir --base archive.fa_traducido -o archive.fa
 
 Cada DIR es la carpeta que contiene ``unitbase.dat`` y ``unitstat.dat`` de ese juego (en la
 recopilación: ``inazumaN/data_iz/logic`` dentro de archive.fa; en las ROM NDS: ``data_iz/logic/sp``
@@ -92,6 +93,20 @@ def _traspasar(args: argparse.Namespace) -> int:
     return 0
 
 
+def _construir(args: argparse.Namespace) -> int:
+    """archive.fa de la edición definitiva a partir del traducido (nunca del japonés)."""
+    from ie123kit.definitiva import construir
+    from ie123kit.nucleo.contenedores.fa import FaArchive
+
+    base, salida = Path(args.base), Path(args.salida)
+    cambios, resumen = construir.capa_definitiva(FaArchive(str(base)))
+    for linea in resumen:
+        print(linea)
+    info = construir.construir_archive(base, salida, cambios)
+    print(f"{info['cambios']} archivos cambiados; {salida} ({info['tamano']} B)")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m ie123kit.definitiva")
     sub = parser.add_subparsers(dest="orden", required=True)
@@ -114,6 +129,10 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--juego-destino", help="carpeta del juego de destino si no es la de su formato (inazuma3_ogre)")
     t.add_argument("-o", "--salida", required=True)
     t.set_defaults(func=_traspasar)
+    c = sub.add_parser("construir", help="archive.fa de la edición definitiva sobre el de la traducción")
+    c.add_argument("--base", required=True, help="archive.fa YA TRADUCIDO (el de la carpeta de mods)")
+    c.add_argument("-o", "--salida", required=True)
+    c.set_defaults(func=_construir)
     args = parser.parse_args(argv)
     return args.func(args)
 

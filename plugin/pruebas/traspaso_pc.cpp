@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
         std::fprintf(stderr, "uso: traspaso_pc ORIGEN DESTINO SALIDA MODO [NIVEL] [MAPA]\n");
         return 2;
     }
-    std::vector<uint8_t> a = Leer(argv[1]), b = Leer(argv[2]);
+    std::vector<uint8_t> b = Leer(argv[2]), a = std::string(argv[1]) == "-" ? b : Leer(argv[1]);
     Partida origen, destino;
     if (!origen.Cargar(a, DetectarFormato(a.data(), a.size())) || !destino.Cargar(b, DetectarFormato(b.data(), b.size()))) {
         std::fprintf(stderr, "partida no reconocida\n");
@@ -76,6 +76,17 @@ int main(int argc, char **argv) {
     if (modo == "completa") op.modo = Modo::Completa;
     else if (modo == "equilibrada") { op.modo = Modo::Equilibrada; op.nivelTope = nivel; }
     else if (modo == "solo_fichajes") { op.modo = Modo::SoloFichajes; op.nivelFichaje = nivel; }
+    else if (modo == "fichar") {
+        // traspaso_pc - DESTINO SALIDA fichar NIVEL NUMERO: fichaje especial sobre DESTINO.
+        static const char *NOMBRES[] = {"hecho", "ya_esta", "sin_sitio", "sin_plantilla", "opciones"};
+        Fichaje r = Fichar(destino, static_cast<uint16_t>(std::atoi(argv[6])), static_cast<uint8_t>(nivel), op);
+        std::printf("fichaje %s\n", NOMBRES[static_cast<int>(r)]);
+        if (destino.Sellar() != Error::Ninguno) return 1;
+        FILE *f = std::fopen(argv[3], "wb");
+        std::fwrite(destino.Datos().data(), 1, destino.Datos().size(), f);
+        std::fclose(f);
+        return 0;
+    }
     else { std::fprintf(stderr, "modo desconocido\n"); return 2; }
 
     std::vector<Par> lista;

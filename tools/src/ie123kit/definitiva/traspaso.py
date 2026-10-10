@@ -26,7 +26,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 
-from ie123kit.definitiva.partida import JugadorPartida, Partida
+from ie123kit.definitiva.partida import NUM_TECNICAS, JugadorPartida, Partida
 
 COMPLETA = "completa"
 EQUILIBRADA = "equilibrada"
@@ -111,6 +111,39 @@ def _fundir(actual: JugadorPartida, nivel: int, exp: int, nuevas) -> JugadorPart
     if (nivel, exp) > (actual.nivel, actual.exp):
         return actual.con(exp=exp, nivel=nivel, tecnicas=tuple(tecnicas), niveles_tecnica=tuple(niveles))
     return actual.con(tecnicas=tuple(tecnicas), niveles_tecnica=tuple(niveles))
+
+
+class FichajeError(ValueError):
+    """El fichaje especial no se puede hacer (``motivo``: ya_esta, sin_sitio, sin_plantilla, opciones)."""
+
+    def __init__(self, motivo: str):
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+def fichar(destino: Partida, numero: int, nivel: int, op: Opciones, plantilla: bytes | None = None) -> int:
+    """Fichaje especial (Aiden Froste): jugador nuevo con ese nivel, su EXP mínima y las técnicas de su nivel.
+
+    Los campos sin interpretar salen de ``plantilla`` (un jugador de la misma partida; por defecto, el
+    primero). Devuelve su posición en la partida. Gemelo de ``Fichar`` (plugin/Sources/Nucleo/Traspaso.cpp).
+    """
+    if op.exp_de_nivel is None:
+        raise FichajeError("opciones")
+    clave = op.clave_destino or (lambda id_: id_)
+    jugadores = destino.jugadores()
+    if any(clave(j.id) == clave(numero) for j in jugadores):
+        raise FichajeError("ya_esta")
+    if destino.num_jugadores >= destino.formato.max_jugadores:
+        raise FichajeError("sin_sitio")
+    if plantilla is None and not jugadores:
+        raise FichajeError("sin_plantilla")
+    tecnicas, niveles = [0] * NUM_TECNICAS, [0] * NUM_TECNICAS
+    aprendidas = [(t, 0) for t in op.aprendidas(numero, nivel)] if op.aprendidas else []
+    _anadir_tecnicas(tecnicas, niveles, aprendidas)
+    ficha = JugadorPartida(exp=op.exp_de_nivel(numero, nivel), id=numero, tecnicas=tuple(tecnicas),
+                           niveles_tecnica=tuple(niveles), nivel=nivel,
+                           crudo=plantilla if plantilla is not None else jugadores[0].crudo)
+    return destino.anadir_jugador(ficha)
 
 
 def traspasar(origen: Partida, destino: Partida, mapa_ids: Mapping[int, int] | None, op: Opciones) -> Informe:

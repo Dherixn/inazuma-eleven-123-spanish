@@ -12,11 +12,47 @@ así que el resultado no debe pasar de 2 GiB.
 from __future__ import annotations
 
 import shutil
+from collections.abc import Callable
 from pathlib import Path
 
+from ie123kit.definitiva import aiden
 from ie123kit.nucleo.contenedores.fa import FaArchive, reemplazar_entrada
 
 LIMITE = 2**31 - 1
+LOGICA = "{juego}/data_iz/logic/"
+
+
+def _tablas(arc: FaArchive, juego: str) -> aiden.Tablas:
+    base = LOGICA.format(juego=juego)
+    return aiden.Tablas(*(arc.read(base + f) for f in ("unitbase.dat", "unitstat.dat", "unitno.dat", "unitbase.STR")))
+
+
+def _cambios_de(juego: str, antes: aiden.Tablas, despues: aiden.Tablas) -> dict[str, bytes]:
+    base = LOGICA.format(juego=juego)
+    nombres = {"unitbase": "unitbase.dat", "unitstat": "unitstat.dat", "unitno": "unitno.dat", "textos": "unitbase.STR"}
+    return {base + archivo: getattr(despues, campo) for campo, archivo in nombres.items()
+            if getattr(despues, campo) != getattr(antes, campo)}
+
+
+def capa_definitiva(arc: FaArchive, codificar: Callable[[str], bytes] | None = None) -> tuple[dict[str, bytes], list[str]]:
+    """Archivos que cambia la edición definitiva sobre el archive.fa traducido, y un resumen legible.
+
+    ``codificar`` es el de ancho completo de la traducción (por defecto, ``ancho_completo.encode_fullwidth``).
+    """
+    if codificar is None:
+        from ie123kit.nucleo.texto import ancho_completo
+        codificar = ancho_completo.encode_fullwidth
+    cambios: dict[str, bytes] = {}
+    resumen = []
+    antes = _tablas(arc, "inazuma2")
+    cambios |= _cambios_de("inazuma2", antes, aiden.ie2(antes, codificar))
+    resumen.append(f"inazuma2: Aiden Froste jugable (ficha {aiden.FICHA_IE2}, número {aiden.NUMERO_IE2})")
+    for juego in ("inazuma3", "inazuma3_ogre"):
+        antes = _tablas(arc, juego)
+        despues, ficha, numero = aiden.ie3(antes, codificar)
+        cambios |= _cambios_de(juego, antes, despues)
+        resumen.append(f"{juego}: Aiden Froste en la ficha {ficha}, número {numero}")
+    return cambios, resumen
 
 
 def construir_archive(origen: Path, destino: Path, cambios: dict[str, bytes]) -> dict[str, int]:

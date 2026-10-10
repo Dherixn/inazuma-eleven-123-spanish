@@ -154,4 +154,30 @@ namespace Definitiva {
         return informe;
     }
 
+    Fichaje Fichar(Partida &destino, uint16_t numero, uint8_t nivel, const Opciones &op,
+                   const std::vector<uint8_t> *plantilla, uint32_t *indice) {
+        if (!op.expDeNivel)
+            return Fichaje::OpcionesIncompletas;
+        auto clave = [&op](uint16_t n) -> uint32_t { return op.clave ? op.clave(n, op.contexto) : n; };
+        for (uint32_t k = 0; k < destino.NumJugadores(); ++k)
+            if (clave(destino.Jugador(k).id) == clave(numero))
+                return Fichaje::YaEsta;
+        if (destino.NumJugadores() >= destino.Formato()->maxJugadores)
+            return Fichaje::SinSitio;
+        if (!plantilla && destino.NumJugadores() == 0)
+            return Fichaje::SinPlantilla;
+        JugadorPartida ficha;
+        ficha.crudo = plantilla ? *plantilla : destino.Jugador(0).crudo;
+        ficha.id = numero;
+        ficha.nivel = nivel;
+        ficha.exp = op.expDeNivel(numero, nivel, op.contexto);
+        Anadir(ficha.tecnicas, ficha.nivelesTecnica, Heredadas(op, numero, nivel, JugadorPartida()));
+        uint32_t i;
+        if (destino.AnadirJugador(ficha, &i) != Error::Ninguno)
+            return Fichaje::SinSitio;
+        if (indice)
+            *indice = i;
+        return Fichaje::Hecho;
+    }
+
 }

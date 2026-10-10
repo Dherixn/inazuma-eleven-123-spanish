@@ -123,6 +123,20 @@ def main() -> int:
             op = tr.Opciones(modo=modo, nivel_tope=nivel if modo == tr.EQUILIBRADA else None,
                              nivel_fichaje=nivel if modo == tr.SOLO_FICHAJES else None,
                              exp_de_nivel=exp_prueba, aprendidas=aprendidas_prueba, clave_destino=lambda n: n // 3)
+            # Fichaje especial sobre la misma partida de destino: a veces de alguien que ya está.
+            ids_destino = [j.id for j in destino.jugadores()]
+            numero = rnd.choice(ids_destino) if ids_destino and rnd.random() < 0.3 else rnd.randint(1, 3000)
+            nivel_f = rnd.randint(1, 99)
+            fichado = pt.Partida(destino.sellar(), destino.formato, destino.espacio)
+            try:
+                tr.fichar(fichado, numero, nivel_f, op)
+                motivo = "hecho"
+            except tr.FichajeError as e:
+                motivo = e.motivo
+            esperado[nombre + "_f"] = ([f"fichaje {motivo}"], fichado.sellar())
+            relf = f"pruebas/{tmp.name}/{nombre}_f"
+            ordenes.append(f"/tmp/tp - pruebas/{tmp.name}/{nombre}.d {relf}.s fichar {nivel_f} {numero} > {relf}.txt")
+
             inf = tr.traspasar(origen, destino, tabla, op)
             esperado[nombre] = (informe_python(inf), destino.sellar())
             rel = f"pruebas/{tmp.name}/{nombre}"
