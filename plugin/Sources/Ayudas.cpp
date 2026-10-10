@@ -12,6 +12,7 @@
 #include "Nucleo/Texto.hpp"
 #include "Nucleo/TablaIni.hpp"
 #include "PlantillaEnJuego.hpp"
+#include "Secretos.hpp"
 
 using namespace CTRPluginFramework;
 
@@ -227,6 +228,7 @@ namespace Definitiva {
                 if (clasificar) {
                     juego = visto;
                     CuidarPlantilla(juego, Valor("pept") != 0, static_cast<int>(Valor("exp")));
+                    SecretosPendientes();
                 }
                 if (vuelta % 500 == 0)
                     Buscar(ZONA_LARGO);

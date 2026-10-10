@@ -85,6 +85,40 @@ namespace Definitiva {
 
     }
 
+    JuegoActivo JuegoActual() { return gJuego; }
+
+    u32 DireccionPuntos() {
+        JuegoActivo juego = gJuego;
+        s32 distancia = juego == JuegoActivo::IE1 ? -0xCE4 : juego == JuegoActivo::IE2 ? -0xF0C : 0;
+        if (!distancia)
+            return 0;
+        Info inf = InfoDe(juego);
+        const JuegoDatos *t = TablasDe(inf.tablas, *inf.perfil);
+        if (!t)
+            return 0;
+        const GeometriaPlantilla &g = *inf.geo;
+        u32 base = gBase;
+        if (!base || ContarRegistros(reinterpret_cast<const u8 *>(base), TramoLegible(base, g.paso * MINIMO), g, *t) < MINIMO) {
+            base = 0;
+            for (u32 cursor = 0; cursor < inf.largo && !base;) {
+                u32 inicio = inf.zona + cursor, largo = TROZO + g.paso * MINIMO;
+                if (cursor + largo > inf.largo)
+                    largo = inf.largo - cursor;
+                u32 legible = TramoLegible(inicio, largo);
+                if (legible >= g.paso * MINIMO) {
+                    long off = BuscarPlantilla(reinterpret_cast<const u8 *>(inicio), legible, g, *t, MINIMO);
+                    if (off >= 0)
+                        base = inicio + static_cast<u32>(off);
+                }
+                cursor += legible >= TROZO ? TROZO : (legible ? legible : 0x1000);
+            }
+        }
+        if (!base)
+            return 0;
+        u32 puntos = static_cast<u32>(static_cast<s32>(base) + distancia);
+        return Escribible(puntos, 8) ? puntos : 0;
+    }
+
     void CuidarPlantilla(JuegoActivo juego, bool llenarPePt, int factorExp) {
         gEstado[1] = static_cast<u32>(juego);
         gEstado[2] = (llenarPePt ? 1 : 0) | static_cast<u32>(factorExp) << 8;

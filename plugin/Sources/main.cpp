@@ -11,6 +11,7 @@
 #include "Continuidad.hpp"
 #include "Fichajes.hpp"
 #include "Partidas.hpp"
+#include "Secretos.hpp"
 
 namespace CTRPluginFramework {
 
@@ -68,6 +69,8 @@ namespace CTRPluginFramework {
         *menu += Definitiva::CrearMenuFichajes(CARPETA_COPIAS);
         *menu += Definitiva::CrearMenuAyudas();
         *menu += partidas;
+        *menu += Definitiva::CrearCuaderno();  // oculto hasta que se encuentra
+        Definitiva::IniciarSecretos();
 
         menu->Run();
         delete menu;
