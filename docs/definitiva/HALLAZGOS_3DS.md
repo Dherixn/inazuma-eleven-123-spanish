@@ -24,8 +24,9 @@ esto copia datos del juego al repositorio: son posiciones, tamaños y comportami
   equipo (1 en los naturales; 0x36 el Orfeo de Paolo Bianchi, el del prólogo).
 - **Grupo** (los 16 que juegan; el resto es la reserva, página 2 de Equipo): en el IE2, una lista de 16
   números (u16) 0x40 B detrás de los 100 registros (0x3E68); el byte 0x56 de la información es su resumen.
-  Al guardar, el juego reordena los registros (grupo primero). En el IE2, el menú Equipo no deja pasar a
-  nadie de la reserva al grupo (al menos en el episodio 1). En el IE3 el grupo aún no está localizado.
+  Al guardar, el juego reordena los registros (grupo primero). En el IE2 y el IE3, el menú Equipo no deja
+  pasar a nadie de la reserva al grupo (al menos al principio). En el IE3 el grupo no está en +0x8C tras los
+  registros (allí va otra cosa), ni es el byte 0x56, ni el dorsal y el sitio de la ficha: sin localizar.
 - Prólogo del IE3: juegas con Paolo Bianchi (número 3170) y luego la historia lo quita y deja a Mark solo en
   el grupo. Si se ha traspasado antes, los traspasados siguen (Mark con su nivel, el resto en la reserva).
 
@@ -62,6 +63,17 @@ esto copia datos del juego al repositorio: son posiciones, tamaños y comportami
   cada versión; el código lo consulta en cada uso: `rpgencountf/b.dat`, `BinderData_F/B`, `PracticeData
   F/B` y, en el IE2, la carpeta `data_iz_blizzard` (scripts de eventos). La partida es la del juego elegido.
 - `SPECIAL_SKILL_SPEND_TP` y `FUSEI_ITEM_NO` no los lee ningún módulo.
+
+## Scripts de evento
+
+- `inazumaN/data_iz/script/eve.pkh` (índice «PackNum»: entradas de 12 B desde 0x30, `id, offset, tamaño`,
+  y un centinela 0xFFFFFFFF) + `eve.pkb` (cada evento, un SSD comprimido en LZ10). El IE2 tiene además
+  `data_iz_blizzard/script` (Ventisca); Fuego Explosivo usa los de Rayo Celeste.
+- Instrucción 16446: une un jugador al equipo (`número, nivel, dorsal, ?, ?`; en el prólogo del IE3,
+  `[3170, 30, 10, 0, 1]`). 16447: lo quita. 12376/12378/12381/12383/12399 llevan el número del personaje en
+  las escenas.
+- Varios personajes tienen varias fichas jugables; la historia solo ficha una (IE3: Jude 30, no 1097; Shawn
+  2338; Caleb 3005; Nathan 2 y Kevin 11, no sus 24xx). El traspaso usa la que ficha la historia.
 
 ## Aviso de «datos ilegítimos»
 
