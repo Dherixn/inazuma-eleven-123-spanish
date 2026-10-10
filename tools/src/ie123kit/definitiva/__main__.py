@@ -88,15 +88,23 @@ def _cabecera(args: argparse.Namespace) -> int:
                 f" ({args.plataforma}). No editar a mano.\n")
     texto = (cabecera + "// Pares (número de jugador en el juego de origen, en el de destino), ordenados por origen.\n\n"
              + _pares_cpp("EQUIV_IE1_IE2", ie1_ie2) + "\n" + _pares_cpp("EQUIV_IE2_IE3", ie2_ie3))
+    if args.plataforma == "3ds" and args.ogro:
+        ogro = _cargar(Path(args.ogro), fichas.PERFILES["3ds.ie3"])
+        d_ogro = datos_juego.cargar(Path(args.ogro), fichas.PERFILES["3ds.ie3"])
+        ie2_ogro = datos_juego.mapa_de_numeros(identidades.emparejar_por_cara(ie2, ogro), d2, d_ogro)
+        texto += "\n" + _pares_cpp("EQUIV_IE2_OGRO", ie2_ogro)
+        print(f"IE2→Ogro: {len(ie2_ogro)} pares")
     salida = Path(args.salida)
     salida.parent.mkdir(parents=True, exist_ok=True)
     salida.write_text(texto, encoding="utf-8", newline="\n")
     print(f"IE1→IE2: {len(ie1_ie2)} pares; IE2→IE3: {len(ie2_ie3)} pares; escrito: {salida}")
     if args.plataforma == "3ds":
         destino = salida.with_name("DatosDestino.inc")
-        destino.write_text(cabecera + "\n" + _fichas_destino_cpp("FICHAS_IE2", d2) + "\n" + _curvas_cpp("CURVAS_IE2", d2)
-                           + "\n" + _fichas_destino_cpp("FICHAS_IE3", d3) + "\n" + _curvas_cpp("CURVAS_IE3", d3),
-                           encoding="utf-8", newline="\n")
+        bloques = [_fichas_destino_cpp("FICHAS_IE2", d2), _curvas_cpp("CURVAS_IE2", d2),
+                   _fichas_destino_cpp("FICHAS_IE3", d3), _curvas_cpp("CURVAS_IE3", d3)]
+        if args.ogro:
+            bloques += [_fichas_destino_cpp("FICHAS_OGRO", d_ogro), _curvas_cpp("CURVAS_OGRO", d_ogro)]
+        destino.write_text(cabecera + "\n" + "\n".join(bloques), encoding="utf-8", newline="\n")
         print(f"datos de destino: {len(d2.indice_de)} fichas IE2, {len(d3.indice_de)} IE3; escrito: {destino}")
     return 0
 
@@ -154,6 +162,7 @@ def main(argv: list[str] | None = None) -> int:
     c = sub.add_parser("cabecera", help="tablas de equivalencias en C++ para el plugin")
     for juego in ("ie1", "ie2", "ie3"):
         c.add_argument(f"--{juego}", required=True)
+    c.add_argument("--ogro", help="carpeta logic de La amenaza del Ogro (3DS)")
     c.add_argument("--plataforma", default="3ds", choices=("nds", "3ds"))
     c.add_argument("-o", "--salida", required=True)
     c.set_defaults(func=_cabecera)

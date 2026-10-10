@@ -64,5 +64,7 @@ namespace Definitiva {
                                       sizeof(CURVAS_IE2) / sizeof(CURVAS_IE2[0])};
     const JuegoDestino DESTINO_IE3 = {FICHAS_IE3, sizeof(FICHAS_IE3) / sizeof(FICHAS_IE3[0]), CURVAS_IE3,
                                       sizeof(CURVAS_IE3) / sizeof(CURVAS_IE3[0])};
+    const JuegoDestino DESTINO_OGRO = {FICHAS_OGRO, sizeof(FICHAS_OGRO) / sizeof(FICHAS_OGRO[0]), CURVAS_OGRO,
+                                       sizeof(CURVAS_OGRO) / sizeof(CURVAS_OGRO[0])};
 
 }

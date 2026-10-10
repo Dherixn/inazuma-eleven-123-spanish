@@ -17,6 +17,12 @@ namespace Definitiva {
 
         const char *gCarpetaCopias = "/Inazuma123Definitiva/partidas";
 
+        struct Origen {
+            const char *archivo;
+            const char *nombre;
+            const FormatoPartida *formato;
+        };
+
         struct Destino {
             const char *archivo;
             const char *nombre;
@@ -72,13 +78,40 @@ namespace Definitiva {
             return true;
         }
 
-        void Traer(const char *archivoOrigen, const FormatoPartida &formatoOrigen, const char *nombreOrigen,
-                   const Destino &destino, const Mapa &mapa) {
+        // De entre los orígenes posibles (Fuego o Ventisca), los que tienen partida; si hay dos, se pregunta.
+        const Origen *ElegirOrigen(const std::vector<Origen> &origenes, std::vector<u8> &bruto) {
+            std::vector<const Origen *> hay;
+            std::vector<std::string> nombres;
+            for (const Origen &o : origenes) {
+                std::vector<u8> datos;
+                if (LeerPartida(o.archivo, datos)) {
+                    hay.push_back(&o);
+                    nombres.push_back(o.nombre);
+                }
+            }
+            if (hay.empty())
+                return nullptr;
+            size_t k = 0;
+            if (hay.size() > 1) {
+                Keyboard kb("¿De qué juego traes tu equipo?", nombres);
+                int eleccion = kb.Open();
+                if (eleccion < 0)
+                    return nullptr;
+                k = static_cast<size_t>(eleccion);
+            }
+            LeerPartida(hay[k]->archivo, bruto);
+            return hay[k];
+        }
+
+        void Traer(const std::vector<Origen> &origenes, const Destino &destino, const Mapa &mapa) {
             std::vector<u8> bruto;
-            if (!LeerPartida(archivoOrigen, bruto)) {
-                Aviso(Utils::Format("No hay partida de %s.", nombreOrigen));
+            const Origen *elegido = ElegirOrigen(origenes, bruto);
+            if (!elegido) {
+                Aviso(Utils::Format("No hay partida de %s.", origenes[0].nombre));
                 return;
             }
+            const FormatoPartida &formatoOrigen = *elegido->formato;
+            const char *nombreOrigen = elegido->nombre;
             int espacio = ElegirEspacio(bruto, formatoOrigen);
             if (espacio == -1) {
                 Aviso(Utils::Format("La partida de %s está vacía o dañada.", nombreOrigen));
@@ -124,13 +157,21 @@ namespace Definitiva {
                                 static_cast<unsigned>(informe.mejorados.size()), copia.c_str(), destino.nombre));
         }
 
+        // Nombres de archivo sacados del código de la recopilación (code.bin descomprimido).
+        const std::vector<Origen> DESDE_IE1 = {{"/ina1_save.dat", "Inazuma Eleven", &FORMATO_IE1}};
+        const std::vector<Origen> DESDE_IE2 = {{"/ina2F_save.dat", "Tormenta de Fuego", &FORMATO_IE2},
+                                               {"/ina2B_save.dat", "Ventisca Eterna", &FORMATO_IE2}};
         const Destino IE2_FUEGO = {"/ina2F_save.dat", "Inazuma Eleven 2: Tormenta de Fuego", &FORMATO_IE2, &DESTINO_IE2};
         const Destino IE2_VENTISCA = {"/ina2B_save.dat", "Inazuma Eleven 2: Ventisca Eterna", &FORMATO_IE2, &DESTINO_IE2};
+        const Destino IE3_RAYO = {"/ina3S_save.dat", "Inazuma Eleven 3: Rayo Celeste", &FORMATO_IE3, &DESTINO_IE3};
+        const Destino IE3_FUEGO = {"/ina3B_save.dat", "Inazuma Eleven 3: Fuego Explosivo", &FORMATO_IE3, &DESTINO_IE3};
+        const Destino IE3_OGRO = {"/ina3O_save.dat", "Inazuma Eleven 3: La amenaza del Ogro", &FORMATO_IE3, &DESTINO_OGRO};
 
-        void TraerIE1aFuego(MenuEntry *) { Traer("/ina1_save.dat", FORMATO_IE1, "Inazuma Eleven", IE2_FUEGO, MAPA_IE1_IE2); }
-        void TraerIE1aVentisca(MenuEntry *) {
-            Traer("/ina1_save.dat", FORMATO_IE1, "Inazuma Eleven", IE2_VENTISCA, MAPA_IE1_IE2);
-        }
+        void TraerIE1aFuego(MenuEntry *) { Traer(DESDE_IE1, IE2_FUEGO, MAPA_IE1_IE2); }
+        void TraerIE1aVentisca(MenuEntry *) { Traer(DESDE_IE1, IE2_VENTISCA, MAPA_IE1_IE2); }
+        void TraerIE2aRayo(MenuEntry *) { Traer(DESDE_IE2, IE3_RAYO, MAPA_IE2_IE3); }
+        void TraerIE2aFuegoExplosivo(MenuEntry *) { Traer(DESDE_IE2, IE3_FUEGO, MAPA_IE2_IE3); }
+        void TraerIE2aOgro(MenuEntry *) { Traer(DESDE_IE2, IE3_OGRO, MAPA_IE2_OGRO); }
 
     }
 
@@ -142,6 +183,12 @@ namespace Definitiva {
                                   "Hazlo desde el menú de la recopilación o vuelve luego al título.");
         *carpeta += new MenuEntry("Traer mi equipo del IE1 a Ventisca Eterna", nullptr, TraerIE1aVentisca,
                                   "Tus fichajes del Inazuma Eleven llegan al IE2 con su nivel y técnicas.");
+        *carpeta += new MenuEntry("Traer mi equipo del IE2 a Rayo Celeste", nullptr, TraerIE2aRayo,
+                                  "Tus fichajes del IE2 (Fuego o Ventisca) llegan al IE3.");
+        *carpeta += new MenuEntry("Traer mi equipo del IE2 a Fuego Explosivo", nullptr, TraerIE2aFuegoExplosivo,
+                                  "Tus fichajes del IE2 (Fuego o Ventisca) llegan al IE3.");
+        *carpeta += new MenuEntry("Traer mi equipo del IE2 a La amenaza del Ogro", nullptr, TraerIE2aOgro,
+                                  "Tus fichajes del IE2 (Fuego o Ventisca) llegan al IE3.");
         return carpeta;
     }
 

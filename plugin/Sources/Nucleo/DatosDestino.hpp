@@ -35,5 +35,6 @@ namespace Definitiva {
 
     extern const JuegoDestino DESTINO_IE2;
     extern const JuegoDestino DESTINO_IE3;
+    extern const JuegoDestino DESTINO_OGRO;
 
 }
