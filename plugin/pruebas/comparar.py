@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import random
-import re
 import shutil
 import struct
 import subprocess
@@ -31,10 +30,13 @@ IMAGEN = "definitiva-3gx"
 MODOS = (tr.COMPLETA, tr.EQUILIBRADA, tr.SOLO_FICHAJES)
 
 
-def mapa_de_inc(nombre: str) -> dict[int, int]:
-    texto = (PLUGIN / "Sources" / "Nucleo" / "Equivalencias.inc").read_text(encoding="utf-8")
-    bloque = re.search(rf"{nombre}\[\] = \{{(.*?)\}};", texto, re.DOTALL).group(1)
-    return {int(a): int(b) for a, b in re.findall(r"\{(\d+), (\d+)\}", bloque)}
+def mapa_sintetico(rnd: random.Random, cantidad: int, tope: int) -> dict[int, int]:
+    """Tabla de números de jugador de prueba (las reales salen del juego al ejecutarse y no se suben)."""
+    return {a: rnd.randrange(1, tope) for a in sorted(rnd.sample(range(1, tope), cantidad))}
+
+
+def lista(mapa: dict[int, int]) -> str:
+    return "lista:" + ",".join(f"{a}={b}" for a, b in mapa.items())
 
 
 def crear_partida(clave: str, jugadores: list[tuple[int, int, int, list[int]]], rnd: random.Random) -> pt.Partida:
@@ -65,7 +67,7 @@ def jugadores_al_azar(rnd: random.Random, ids: list[int], n: int) -> list[tuple[
 
 
 def casos(n: int, rnd: random.Random):
-    ie1_ie2, ie2_ie3 = mapa_de_inc("EQUIV_IE1_IE2"), mapa_de_inc("EQUIV_IE2_IE3")
+    ie1_ie2, ie2_ie3 = mapa_sintetico(rnd, 400, 2400), mapa_sintetico(rnd, 600, 3200)
     ids_ie2 = sorted(ie2_ie3)
     for k in range(n):
         modo = MODOS[k % 3]
@@ -74,7 +76,7 @@ def casos(n: int, rnd: random.Random):
             # IE1 -> IE2: mismo tamaño de ficha, sin plantilla.
             origen = crear_partida("ie1.123", jugadores_al_azar(rnd, sorted(ie1_ie2), rnd.randrange(1, 33)), rnd)
             destino = crear_partida("ie2.123", jugadores_al_azar(rnd, sorted(ie1_ie2.values()), rnd.randrange(0, 30)), rnd)
-            yield f"c{k}", origen, destino, modo, nivel, "ie1-ie2", ie1_ie2
+            yield f"c{k}", origen, destino, modo, nivel, lista(ie1_ie2), ie1_ie2
             continue
         comunes = jugadores_al_azar(rnd, ids_ie2, rnd.randrange(1, 70))
         if k % 7 == 3:
@@ -85,7 +87,7 @@ def casos(n: int, rnd: random.Random):
                                 + jugadores_al_azar(rnd, sorted(set(ie2_ie3.values()) - set(destino_ids)),
                                                     max(0, destino_n - len(destino_ids))), rnd)
         origen = crear_partida("ie2.123", comunes, rnd)
-        yield f"c{k}", origen, destino, modo, nivel, "ie2-ie3", ie2_ie3
+        yield f"c{k}", origen, destino, modo, nivel, lista(ie2_ie3), ie2_ie3
 
 
 def exp_prueba(numero: int, nivel: int) -> int:
@@ -114,7 +116,7 @@ def main() -> int:
     tmp = Path(tempfile.mkdtemp(prefix="comparar_", dir=AQUI))
     try:
         esperado = {}
-        ordenes = ["set -e", "g++ -std=c++17 -O1 -Wall -Wextra -o /tmp/tp pruebas/traspaso_pc.cpp Sources/Nucleo/*.cpp"]
+        ordenes = ["set -e", "g++ -std=c++17 -O1 -Wall -Wextra -D_GLIBCXX_ASSERTIONS -o /tmp/tp pruebas/traspaso_pc.cpp Sources/Nucleo/*.cpp"]
         for nombre, origen, destino, modo, nivel, mapa, tabla in casos(a.casos, rnd):
             (tmp / f"{nombre}.o").write_bytes(origen.sellar())
             (tmp / f"{nombre}.d").write_bytes(destino.sellar())

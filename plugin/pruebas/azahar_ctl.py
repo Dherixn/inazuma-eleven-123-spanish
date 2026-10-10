@@ -13,6 +13,7 @@ Select=N). Hace falta el servidor RPC activado (enable_rpc_server=true en qt-con
 """
 from __future__ import annotations
 
+import contextlib
 import ctypes
 import os
 import subprocess
@@ -41,7 +42,7 @@ TITULO = 0x00040000000BB800
 
 def _rpc(seleccionar: bool = True):
     sys.path.insert(0, str(AZAHAR_DIR / "scripting"))
-    from AzaharRPC import AzaharRPC  # noqa: PLC0415  (vive junto al emulador)
+    from AzaharRPC import AzaharRPC
     rpc = AzaharRPC(timeout=3)
     if seleccionar:
         # Sin proceso elegido, el servidor avisa de que las lecturas pueden no ser del juego.
@@ -112,12 +113,10 @@ def iniciar() -> None:
     subprocess.Popen([str(AZAHAR_DIR / "azahar.exe"), ROM], cwd=AZAHAR_DIR)
     for _ in range(60):
         time.sleep(1)
-        try:
+        with contextlib.suppress(Exception):  # aún arrancando
             if _rpc().get_process() is not None:
                 print("Azahar responde por RPC")
                 return
-        except Exception:  # noqa: BLE001  (aún arrancando)
-            pass
     raise SystemExit("Azahar no responde por RPC")
 
 

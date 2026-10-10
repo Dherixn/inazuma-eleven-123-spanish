@@ -2,3 +2,5 @@ release/
 debug/
 *.elf
 *.3gx
+# Tablas sacadas del juego: no se suben (Norma 2). El plugin las lee de archive.fa al ejecutarse.
+Sources/Nucleo/*.inc

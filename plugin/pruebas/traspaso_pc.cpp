@@ -2,7 +2,7 @@
 //
 //   traspaso_pc ORIGEN DESTINO SALIDA MODO [TOPE|FICHAJE] [MAPA]
 //
-// MODO: completa | equilibrada | solo_fichajes.  MAPA: ie1-ie2 | ie2-ie3 | lista:A=B,C=D
+// MODO: completa | equilibrada | solo_fichajes.  MAPA: lista:A=B,C=D
 // Datos de destino de prueba (iguales en comparar.py): EXP = 100·nivel² + número; técnicas por nivel
 // = (n%400+1, nv 1), (n%300+101, nv 10), (n%200+201, nv 30), (n%100+301, nv 100); clave = número / 3.
 // Imprime el informe en una línea por apartado y escribe la partida de destino sellada.
@@ -14,7 +14,6 @@
 #include <string>
 #include <vector>
 
-#include "../Sources/Nucleo/Equivalencias.hpp"
 #include "../Sources/Nucleo/Partida.hpp"
 #include "../Sources/Nucleo/Traspaso.hpp"
 
@@ -81,10 +80,8 @@ int main(int argc, char **argv) {
 
     std::vector<Par> lista;
     Mapa mapa;
-    std::string nombreMapa = argc > 6 ? argv[6] : "ie2-ie3";
-    if (nombreMapa == "ie1-ie2") mapa = MAPA_IE1_IE2;
-    else if (nombreMapa == "ie2-ie3") mapa = MAPA_IE2_IE3;
-    else if (nombreMapa.rfind("lista:", 0) == 0) {
+    std::string nombreMapa = argc > 6 ? argv[6] : "";
+    if (nombreMapa.rfind("lista:", 0) == 0) {
         std::string resto = nombreMapa.substr(6);
         size_t pos = 0;
         while (pos < resto.size()) {

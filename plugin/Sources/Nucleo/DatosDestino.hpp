@@ -1,40 +1,71 @@
 #pragma once
 
-// Datos de los juegos de destino del traspaso (IE2 e IE3), generados desde sus tablas en
-// DatosDestino.inc: por número de jugador, su curva de EXP, la clave de su personaje y sus técnicas
-// por nivel. Gemelo de ie123kit.definitiva.datos_juego.
+// Tablas de un juego de la recopilación construidas en tiempo de ejecución a partir de sus archivos
+// (unitbase.dat, unitstat.dat, lvup_exp.dat, unitno.dat de archive.fa): así el plugin no lleva datos
+// del juego y ve lo que añada la capa de datos del mod. Gemelo de ie123kit.definitiva.datos_juego y
+// de identidades.emparejar_por_cara.
 
 #include <cstddef>
 #include <cstdint>
+#include <utility>
+#include <vector>
 
 #include "Traspaso.hpp"
 
 namespace Definitiva {
 
-    struct FichaDestino {
-        uint16_t numero;
-        uint8_t curva;
-        uint32_t clave;
-        uint16_t tec[4];
-        uint8_t nv[4];
+    struct PerfilJuego {
+        uint32_t basePaso;
+        uint32_t offIdentidad;  // primer byte = curva de EXP
+        uint32_t offCara;
+        uint32_t offPosicion;
+        uint32_t offNombre;     // nombre completo (clave del personaje)
+        uint32_t anchoNombre;
+        uint32_t statPaso;
+        bool statOfuscado;      // IE3: transformación de item.dat
+        bool tecnicaU8;         // IE1 de la recopilación: técnica en 2 B
+        bool nivelU8;           // IE3: nivel de técnica en 1 B
     };
 
-    struct JuegoDestino {
-        const FichaDestino *fichas;
-        size_t cantidad;
-        const uint32_t (*curvas)[98];
-        size_t numCurvas;
+    extern const PerfilJuego PERFIL_IE1;
+    extern const PerfilJuego PERFIL_IE2;
+    extern const PerfilJuego PERFIL_IE3;
 
-        const FichaDestino *Buscar(uint16_t numero) const;
+    class JuegoDatos {
+    public:
+        bool Construir(const PerfilJuego &perfil, const std::vector<uint8_t> &unitbase,
+                       const std::vector<uint8_t> &unitstat, const std::vector<uint8_t> &lvup,
+                       const std::vector<uint8_t> &unitno);
+
+        size_t Fichas() const { return caras_.size(); }
+        uint16_t Cara(size_t i) const { return caras_[i]; }
+        uint8_t Posicion(size_t i) const { return posiciones_[i]; }
+        bool Jugable(size_t i) const { return jugables_[i]; }
+        uint16_t Numero(size_t i) const { return numeros_[i]; }
+
+        // Por número de jugador (el de la partida). -1 si no tiene ficha.
+        int Ficha(uint16_t numero) const;
         uint32_t ExpMinima(uint16_t numero, uint8_t nivel) const;
         int Aprendidas(uint16_t numero, uint8_t nivel, uint16_t salida[4]) const;
         uint32_t Clave(uint16_t numero) const;
+
         // Rellena las funciones del traspaso con este juego como destino.
         void Preparar(Opciones &op) const;
+
+    private:
+        std::vector<std::vector<uint32_t>> curvas_;
+        std::vector<uint8_t> curva_;
+        std::vector<uint16_t> caras_;
+        std::vector<uint8_t> posiciones_;
+        std::vector<bool> jugables_;
+        std::vector<uint16_t> numeros_;
+        std::vector<uint32_t> claves_;
+        std::vector<uint16_t> tecnicas_;  // 4 por ficha
+        std::vector<uint8_t> niveles_;    // 4 por ficha
+        std::vector<std::pair<uint16_t, uint32_t>> indice_;  // (número, primera ficha), ordenado
     };
 
-    extern const JuegoDestino DESTINO_IE2;
-    extern const JuegoDestino DESTINO_IE3;
-    extern const JuegoDestino DESTINO_OGRO;
+    // Origen → destino por cara entre jugables, en números de jugador y ordenado por origen.
+    std::vector<Par> EmparejarPorCara(const JuegoDatos &origen, const JuegoDatos &destino);
 
 }

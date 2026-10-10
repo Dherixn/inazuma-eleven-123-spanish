@@ -4,10 +4,10 @@
 #include <vector>
 
 #include "Nucleo/DatosDestino.hpp"
-#include "Nucleo/Equivalencias.hpp"
 #include "Nucleo/Partida.hpp"
 #include "Nucleo/Traspaso.hpp"
 #include "Partidas.hpp"
+#include "TablasJuego.hpp"
 
 using namespace CTRPluginFramework;
 
@@ -17,17 +17,22 @@ namespace Definitiva {
 
         const char *gCarpetaCopias = "/Inazuma123Definitiva/partidas";
 
+        // `juego` es la carpeta de sus tablas en archive.fa (Ventisca y Fuego Explosivo comparten las de
+        // su juego: sus carpetas propias solo cambian INI, vídeos, imágenes y algún script).
         struct Origen {
             const char *archivo;
             const char *nombre;
             const FormatoPartida *formato;
+            const char *juego;
+            const PerfilJuego *perfil;
         };
 
         struct Destino {
             const char *archivo;
             const char *nombre;
             const FormatoPartida *formato;
-            const JuegoDestino *datos;
+            const char *juego;
+            const PerfilJuego *perfil;
         };
 
         constexpr uint32_t OFF_NIVEL_EQUIPO = 0x55;
@@ -103,7 +108,7 @@ namespace Definitiva {
             return hay[k];
         }
 
-        void Traer(const std::vector<Origen> &origenes, const Destino &destino, const Mapa &mapa) {
+        void Traer(const std::vector<Origen> &origenes, const Destino &destino) {
             std::vector<u8> bruto;
             const Origen *elegido = ElegirOrigen(origenes, bruto);
             if (!elegido) {
@@ -130,10 +135,19 @@ namespace Definitiva {
                 return;
             }
 
+            const JuegoDatos *tablasOrigen = TablasDe(elegido->juego, *elegido->perfil);
+            const JuegoDatos *tablasDestino = TablasDe(destino.juego, *destino.perfil);
+            if (!tablasOrigen || !tablasDestino) {
+                Aviso("No se han podido leer las tablas del juego (archive.fa).");
+                return;
+            }
+            std::vector<Par> pares = EmparejarPorCara(*tablasOrigen, *tablasDestino);
+            Mapa mapa = {pares.data(), pares.size()};
+
             Opciones op;
             if (!ElegirModo(op))
                 return;
-            destino.datos->Preparar(op);
+            tablasDestino->Preparar(op);
 
             std::string copia;
             if (CopiarPartidasASD(gCarpetaCopias, copia) <= 0) {
@@ -158,20 +172,25 @@ namespace Definitiva {
         }
 
         // Nombres de archivo sacados del código de la recopilación (code.bin descomprimido).
-        const std::vector<Origen> DESDE_IE1 = {{"/ina1_save.dat", "Inazuma Eleven", &FORMATO_IE1}};
-        const std::vector<Origen> DESDE_IE2 = {{"/ina2F_save.dat", "Tormenta de Fuego", &FORMATO_IE2},
-                                               {"/ina2B_save.dat", "Ventisca Eterna", &FORMATO_IE2}};
-        const Destino IE2_FUEGO = {"/ina2F_save.dat", "Inazuma Eleven 2: Tormenta de Fuego", &FORMATO_IE2, &DESTINO_IE2};
-        const Destino IE2_VENTISCA = {"/ina2B_save.dat", "Inazuma Eleven 2: Ventisca Eterna", &FORMATO_IE2, &DESTINO_IE2};
-        const Destino IE3_RAYO = {"/ina3S_save.dat", "Inazuma Eleven 3: Rayo Celeste", &FORMATO_IE3, &DESTINO_IE3};
-        const Destino IE3_FUEGO = {"/ina3B_save.dat", "Inazuma Eleven 3: Fuego Explosivo", &FORMATO_IE3, &DESTINO_IE3};
-        const Destino IE3_OGRO = {"/ina3O_save.dat", "Inazuma Eleven 3: La amenaza del Ogro", &FORMATO_IE3, &DESTINO_OGRO};
+        const std::vector<Origen> DESDE_IE1 = {{"/ina1_save.dat", "Inazuma Eleven", &FORMATO_IE1, "inazuma1", &PERFIL_IE1}};
+        const std::vector<Origen> DESDE_IE2 = {
+            {"/ina2F_save.dat", "Tormenta de Fuego", &FORMATO_IE2, "inazuma2", &PERFIL_IE2},
+            {"/ina2B_save.dat", "Ventisca Eterna", &FORMATO_IE2, "inazuma2", &PERFIL_IE2}};
+        const Destino IE2_FUEGO = {"/ina2F_save.dat", "Inazuma Eleven 2: Tormenta de Fuego", &FORMATO_IE2, "inazuma2",
+                                   &PERFIL_IE2};
+        const Destino IE2_VENTISCA = {"/ina2B_save.dat", "Inazuma Eleven 2: Ventisca Eterna", &FORMATO_IE2, "inazuma2",
+                                      &PERFIL_IE2};
+        const Destino IE3_RAYO = {"/ina3S_save.dat", "Inazuma Eleven 3: Rayo Celeste", &FORMATO_IE3, "inazuma3", &PERFIL_IE3};
+        const Destino IE3_FUEGO = {"/ina3B_save.dat", "Inazuma Eleven 3: Fuego Explosivo", &FORMATO_IE3, "inazuma3",
+                                   &PERFIL_IE3};
+        const Destino IE3_OGRO = {"/ina3O_save.dat", "Inazuma Eleven 3: La amenaza del Ogro", &FORMATO_IE3, "inazuma3_ogre",
+                                  &PERFIL_IE3};
 
-        void TraerIE1aFuego(MenuEntry *) { Traer(DESDE_IE1, IE2_FUEGO, MAPA_IE1_IE2); }
-        void TraerIE1aVentisca(MenuEntry *) { Traer(DESDE_IE1, IE2_VENTISCA, MAPA_IE1_IE2); }
-        void TraerIE2aRayo(MenuEntry *) { Traer(DESDE_IE2, IE3_RAYO, MAPA_IE2_IE3); }
-        void TraerIE2aFuegoExplosivo(MenuEntry *) { Traer(DESDE_IE2, IE3_FUEGO, MAPA_IE2_IE3); }
-        void TraerIE2aOgro(MenuEntry *) { Traer(DESDE_IE2, IE3_OGRO, MAPA_IE2_OGRO); }
+        void TraerIE1aFuego(MenuEntry *) { Traer(DESDE_IE1, IE2_FUEGO); }
+        void TraerIE1aVentisca(MenuEntry *) { Traer(DESDE_IE1, IE2_VENTISCA); }
+        void TraerIE2aRayo(MenuEntry *) { Traer(DESDE_IE2, IE3_RAYO); }
+        void TraerIE2aFuegoExplosivo(MenuEntry *) { Traer(DESDE_IE2, IE3_FUEGO); }
+        void TraerIE2aOgro(MenuEntry *) { Traer(DESDE_IE2, IE3_OGRO); }
 
     }
 
