@@ -1,84 +1,88 @@
 # Edición definitiva de Inazuma Eleven 1·2·3
 
 Mod que va **encima de la traducción** y convierte la recopilación en un solo juego, del primer partido
-del IE1 a la final del IE3:
+del IE1 al último del Ogro:
 
-1. **Continuidad**: los jugadores que fichas, las técnicas que aprenden y lo que consigues en un juego
-   siguen contigo en el siguiente, con sentido dentro de la historia.
-2. **Versiones juntas**: Tormenta de Fuego y Ventisca Eterna en una; Rayo Celeste, Fuego Explosivo y La
-   amenaza del Ogro en una.
-3. **Lo que pide la comunidad**: menos farmeo, fichar más fácil, contenido de Wi-Fi recuperado, más
-   técnicas, personajes que faltaban (Aiden Froste), dificultad a elegir. Las ayudas, **siempre
-   opcionales**.
+1. **Continuidad**: el equipo que formas en un juego pasa al siguiente con su nivel y sus técnicas, y las
+   historias se enlazan (IE1 → IE2 → IE3 → La amenaza del Ogro).
+2. **Versiones juntas**: con una sola partida se juegan los exclusivos de Fuego y Ventisca, o de Rayo
+   Celeste y Fuego Explosivo.
+3. **Lo que pide la comunidad**: menos farmeo, Aiden Froste jugable, dificultad a elegir y más, con las
+   ayudas **siempre opcionales**.
+
+## Qué trae
+
+| Menú del plugin | Qué hace |
+|---|---|
+| Continuidad | Traer el equipo del IE1 a Tormenta de Fuego o Ventisca, del IE2 a Rayo Celeste, Fuego Explosivo u Ogro y del IE3 a Ogro. Modos: completa (cada uno con su nivel), equilibrada (nivel máximo) y solo fichajes (todos al mismo nivel). La EXP se recalcula con la curva del juego nuevo y las técnicas con su tabla de aprendizaje. Copia de seguridad en la SD antes de escribir. Texto «Capítulo siguiente» que enlaza las historias. |
+| Continuidad → Crónica de la leyenda | Las partidas de los tres juegos vistas como temporadas: episodio, nivel del equipo, jugadores, horas y total. |
+| Fichajes especiales | Aiden Froste: en el IE2, cuando Shawn aprende «Aullido de lobo» (cuando deja de esconderse tras su hermano); en IE3 y Ogro, con Shawn en el equipo. Llega con el nivel de Shawn y pasa al IE3 con la Continuidad. |
+| Ayudas | Encuentros (normal, menos, muy pocos, ninguno, más), velocidad al andar, supertécnicas del rival (dificultad), precio de venta, fuera de juego, versión (exclusivos de la otra), PE y PT siempre llenos (también dentro del partido), experiencia x2/x3. De fábrica, todo como el original; se guardan en la SD. |
+| Partidas | Ver los archivos de partida y copiarlos a la SD. |
+| (secreto) | Dicen que el abuelo Daisuke dejó un cuaderno... |
+
+Capa de datos (archivos de `archive.fa`, por LayeredFS):
+
+- Aiden Froste jugable en IE2, IE3 y Ogro, con su retrato, su descripción y sus técnicas.
+- Títulos de equipo del IE2 que no cabían en su caja (#14).
+
+## Instalar
+
+Hace falta la ROM japonesa del recopilatorio (CTR-P-AETJ, `00040000000BB800`) y la traducción ya
+montada. Desde la raíz del repositorio:
+
+```
+powershell -ExecutionPolicy Bypass -File plugin/compilar.ps1    # plugin/Definitiva-release.3gx
+python -m ie123kit.definitiva paquete --mod RUTA/load/mods/00040000000BB800 \
+    --plugin plugin/Definitiva-release.3gx -o work/shared/definitiva/Inazuma123Definitiva
+```
+
+El paquete es la carpeta de usuario de Azahar (`load/` y `sdmc/`) con un `LEEME.txt`; lleva datos del
+juego y no se sube (Norma 2). Para la AYN Thor (Azahar para Android), con la consola conectada por USB:
+
+```
+powershell -ExecutionPolicy Bypass -File tools/definitiva_thor.ps1 -Destino /storage/emulated/0/Azahar
+```
+
+y en Azahar: Ajustes → Sistema → «3GX Plugin Loader» activado. En una 3DS con Luma3DS ≥ 13, el `romfs` va
+en `/luma/titles/00040000000BB800/` y el plugin en `/luma/plugins/00040000000BB800/` (ver el `LEEME.txt`).
 
 ## Principios
 
-- **No se toca lo que la traducción ya ha cerrado.** El bloqueo tipográfico v20 y la Norma 2 (nada de
-  ROM ni datos extraídos en git) rigen igual aquí. El mod se monta sobre los ficheros ya traducidos,
-  nunca sobre los japoneses, para no pisar la traducción.
-- **Las ayudas se eligen, no se imponen.** PT/PE al máximo, multiplicador de EXP, menos encuentros…
-  Todo se activa y desactiva. Si no se puede dentro del juego, se elige al instalar.
-- **Heredar con sentido.** Lo que pasa de un juego a otro respeta la historia: el IE2 empieza justo
-  después del IE1 y el IE3 meses después, con el Inazuma Japón seleccionado de todo el país.
-- **Primero datos, luego código.** Lo que se pueda hacer cambiando tablas y ficheros va por LayeredFS. El
-  código (plugin) solo entra cuando los datos no bastan.
+- **No se toca lo que la traducción ya ha cerrado.** Bloqueo tipográfico v20 y Norma 2 igual que en el
+  resto del repositorio. El mod se monta sobre los archivos ya traducidos, nunca sobre los japoneses.
+- **Las ayudas se eligen, no se imponen.** Todo se activa y desactiva cuando quieras.
+- **Nada del juego en el repositorio ni en el plugin.** El plugin lee las tablas (`unitbase`, `unitstat`,
+  `lvup_exp`, `unitno`) del propio `archive.fa` al ejecutarse.
+- **Gemelos C++ y Python.** El traspaso, el fichaje y las tablas existen en los dos y se comparan
+  (`plugin/pruebas/comparar.py`, `comparar_tablas.py`).
 
 ## Arquitectura
 
-| Pieza | Qué es | Qué hace |
+| Pieza | Dónde | Qué hace |
 |---|---|---|
-| Capa de datos | ficheros de la RomFS sustituidos por LayeredFS (Luma3DS y Azahar) | versiones juntas, Aiden, técnicas, tiendas, fichajes, curvas de EXP, `INAZUMA.INI` |
-| Plugin | código que corre junto al juego (plugin 3GX; viabilidad en estudio) | menú de opciones dentro del juego y traspaso de partida entre juegos |
-| Herramientas | `tools/src/ie123kit/definitiva/` | leer y escribir las tablas, tabla de equivalencias de jugadores, construir la capa |
+| Plugin 3GX | `plugin/` (CTRPluginFramework) | menús, traspaso y fichajes sobre los archivos de partida, ayudas sobre la memoria (`INAZUMA.INI` en memoria y la plantilla), secretos |
+| Capa de datos | `tools/src/ie123kit/definitiva/` (`construir`, `aiden`, `titulos`) | `archive.fa` de la edición definitiva sobre el traducido |
+| Herramientas | `python -m ie123kit.definitiva` | `traspasar`, `construir`, `paquete`, `identidades` |
+| Pruebas | `tools/tests/unidad/test_definitiva_*.py`, `plugin/pruebas/` | partidas y tablas sintéticas; en local, con la ROM y Azahar (`azahar_ctl.py`) |
 
-## Continuidad: diseño
+## Probado en Azahar
 
-### Qué se hereda
+- Traspasos IE1 → IE2 → IE3: el plugin y la CLI dan partidas idénticas byte a byte y el juego las carga
+  con nombres, niveles y estadísticas correctos.
+- Aiden fichado en el IE2 desde el plugin y traspasado al IE3: en los dos sale con su retrato, su
+  descripción y sus técnicas.
+- Ayudas: la versión cambia el título y el contenido (Fuego con «Ventisca» carga la partida de Fuego con
+  lo de Ventisca); los parámetros que se leen al cargar el juego llegan a tiempo; EXP x2 y PE/PT llenos
+  sobre la plantilla, con una supertécnica en el primer duelo del IE2 (los PT bajan y vuelven al máximo).
+- Títulos de equipo, crónica, cuaderno secreto.
 
-| Del juego anterior | Cómo llega | Por qué |
-|---|---|---|
-| Jugadores fichados | fichados en el siguiente (el IE1 y el IE2 comparten numeración; para el IE3 se usa la tabla de equivalencias) | es lo que más pesa en tu partida |
-| Técnicas aprendidas | siguen aprendidas si el jugador puede tenerlas en el juego nuevo | — |
-| EXP y nivel | según el modo de herencia elegido (abajo). Las curvas de EXP son idénticas en los tres juegos, así que la EXP se traspasa tal cual | — |
-| Amistad, objetos raros, dinero | en estudio | depende del formato de partida |
-| Medallas del juego anterior | desbloqueos en el siguiente (manual de técnica, jugador secreto, equipo de leyendas) | da motivo para completar cada juego |
+## Pendiente
 
-### Modos de herencia (opción del jugador)
+- Partida larga de prueba: pasar por los tres juegos de principio a fin en la AYN Thor.
+- Aiden en un partido.
+- Contenido que dependía de Wi-Fi o StreetPass (#8, #10) y fichaje libre de cualquier jugador al terminar.
+- Revisar con el equipo de la traducción los títulos acortados (#14).
 
-- **Completa**: nivel y técnicas tal cual. Para quien quiere su equipo exacto.
-- **Equilibrada** (recomendada): llega todo, pero el nivel se ajusta al punto de la historia en que
-  empieza el juego nuevo, para que el principio no sea un paseo.
-- **Solo fichajes**: llegan los jugadores al nivel con que el juego nuevo los traería.
-
-### Enlace de historias
-
-El IE2 empieza con el ataque de la Academia Alius justo después de ganar el Fútbol Frontera, y el IE3 con
-la selección del Inazuma Japón. Al empezar partida nueva en el IE2 o el IE3, si hay una partida terminada
-del juego anterior, el juego ofrece continuarla. Cada juego arranca con el script de `RPG_SCRIPT_NO`
-(`INAZUMA.INI`), lo que abre la puerta a un prólogo de enlace.
-
-## Estado
-
-- [x] Fork y rama `definitiva/continuidad`.
-- [x] Fichas de jugador de los tres juegos leídas, incluida la ofuscación del IE3 (`definitiva.fichas`).
-- [x] Tabla de equivalencias IE1/IE2/IE3: 1701 de los 1745 jugables del IE2 tienen ficha en el IE3
-  (`definitiva.identidades`).
-- [x] Mapa de diferencias entre Fuego y Ventisca y ajustes de `INAZUMA.INI`
-  ([HALLAZGOS_NDS.md](HALLAZGOS_NDS.md)).
-- [x] Peticiones de la comunidad ordenadas y enlazadas al plan ([PETICIONES.md](PETICIONES.md)).
-- [x] Formato de partida del IE2 y del IE3 de la recopilación (cabecera, dos CRC32, fichas de jugador) y
-  motor de traspaso con sus tres modos (`definitiva.partida`, `definitiva.traspaso`). Probado con
-  partidas sintéticas; **falta probarlo con partidas reales**.
-- [x] Mecanismo elegido: **plugin 3GX** (CTRPluginFramework). Lo cargan Luma3DS ≥ 13 y Azahar. Su código
-  vive en memoria propia, así que no choca con el límite de los CRO. Ver [`plugin/`](../../plugin/README.md).
-- [x] Plugin v0.1 compilado: menú propio y copia de las partidas a la SD. El núcleo del traspaso en C++
-  da los mismos bytes que el de Python (120 casos).
-- [ ] **Bloqueo:** ROM japonesa de la recopilación (CTR-P-AETJ, title ID `00040000000BB800`) en esta
-  máquina, para repetir las medidas en 3DS, ver los archivos de partida y probar en Azahar.
-- [ ] Ficha de jugador de la partida del IE1 (distinta de la del IE2 y el IE3) y nombres de los archivos de
-  partida de cada juego.
-- [ ] Campo de la curva de EXP de cada jugador (para el modo equilibrado): saldrá de los pares EXP-nivel de
-  una partida real.
-- [ ] Capa de datos: versiones juntas, Aiden, `INAZUMA.INI`, curvas de EXP, dificultad.
-
-Detalle medido: [HALLAZGOS_NDS.md](HALLAZGOS_NDS.md).
+Hallazgos de 3DS: [HALLAZGOS_3DS.md](HALLAZGOS_3DS.md). De las ROM de DS: [HALLAZGOS_NDS.md](HALLAZGOS_NDS.md).
+Peticiones de la comunidad: [PETICIONES.md](PETICIONES.md).
