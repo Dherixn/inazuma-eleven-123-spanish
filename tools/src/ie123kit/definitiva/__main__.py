@@ -66,6 +66,8 @@ def _traspasar(args: argparse.Namespace) -> int:
     origen.validar()
     destino.validar()
     (j_o, p_o), (j_d, p_d) = JUEGO_DE_FORMATO[fmt_o.nombre], JUEGO_DE_FORMATO[fmt_d.nombre]
+    # Las partidas de IE3 tienen el mismo formato en las tres versiones; Ogro tiene carpeta propia.
+    j_o, j_d = args.juego_origen or j_o, args.juego_destino or j_d
     carpeta_o, carpeta_d = logica / j_o / "data_iz/logic", logica / j_d / "data_iz/logic"
     jug_o = _cargar(carpeta_o, fichas.PERFILES[p_o])
     jug_d = _cargar(carpeta_d, fichas.PERFILES[p_d])
@@ -108,6 +110,8 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--espacio-destino", type=int, default=1)
     t.add_argument("--modo", default=traspaso.COMPLETA, choices=traspaso.MODOS)
     t.add_argument("--nivel", type=int)
+    t.add_argument("--juego-origen", help="carpeta del juego de origen si no es la de su formato (inazuma3_ogre)")
+    t.add_argument("--juego-destino", help="carpeta del juego de destino si no es la de su formato (inazuma3_ogre)")
     t.add_argument("-o", "--salida", required=True)
     t.set_defaults(func=_traspasar)
     args = parser.parse_args(argv)

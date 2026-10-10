@@ -176,6 +176,9 @@ namespace Definitiva {
         const std::vector<Origen> DESDE_IE2 = {
             {"/ina2F_save.dat", "Tormenta de Fuego", &FORMATO_IE2, "inazuma2", &PERFIL_IE2},
             {"/ina2B_save.dat", "Ventisca Eterna", &FORMATO_IE2, "inazuma2", &PERFIL_IE2}};
+        const std::vector<Origen> DESDE_IE3 = {
+            {"/ina3S_save.dat", "Rayo Celeste", &FORMATO_IE3, "inazuma3", &PERFIL_IE3},
+            {"/ina3B_save.dat", "Fuego Explosivo", &FORMATO_IE3, "inazuma3", &PERFIL_IE3}};
         const Destino IE2_FUEGO = {"/ina2F_save.dat", "Inazuma Eleven 2: Tormenta de Fuego", &FORMATO_IE2, "inazuma2",
                                    &PERFIL_IE2};
         const Destino IE2_VENTISCA = {"/ina2B_save.dat", "Inazuma Eleven 2: Ventisca Eterna", &FORMATO_IE2, "inazuma2",
@@ -191,6 +194,7 @@ namespace Definitiva {
         void TraerIE2aRayo(MenuEntry *) { Traer(DESDE_IE2, IE3_RAYO); }
         void TraerIE2aFuegoExplosivo(MenuEntry *) { Traer(DESDE_IE2, IE3_FUEGO); }
         void TraerIE2aOgro(MenuEntry *) { Traer(DESDE_IE2, IE3_OGRO); }
+        void TraerIE3aOgro(MenuEntry *) { Traer(DESDE_IE3, IE3_OGRO); }
 
     }
 
@@ -208,6 +212,10 @@ namespace Definitiva {
                                   "Tus fichajes del IE2 (Fuego o Ventisca) llegan al IE3.");
         *carpeta += new MenuEntry("Traer mi equipo del IE2 a La amenaza del Ogro", nullptr, TraerIE2aOgro,
                                   "Tus fichajes del IE2 (Fuego o Ventisca) llegan al IE3.");
+        *carpeta += new MenuEntry("Traer mi equipo del IE3 a La amenaza del Ogro", nullptr, TraerIE3aOgro,
+                                  "El capítulo final: tu Inazuma Japón de Rayo Celeste o Fuego Explosivo, con su
+"
+                                  "nivel y técnicas, llega a La amenaza del Ogro para plantar cara al Ogro.");
         return carpeta;
     }
 
