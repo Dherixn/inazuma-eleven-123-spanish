@@ -1,6 +1,6 @@
 """Títulos de equipo del IE2 que no caben (#14): «Equipo Victori / oso».
 
-La caja del título (menú del campo y ficha de la partida) pinta cada letra en su casilla y caben 14; 26 de
+La caja del título (menú del campo y ficha de la partida) pinta cada letra en su casilla y caben 14; 27 de
 los 38 títulos traducidos de ``inazuma2/data_iz/logic/rpgtitle.STR`` son más largos y se parten a mitad de
 palabra. Aquí se cambian por otros de 14 o menos con el mismo sentido. Solo es texto: misma codificación
 (ASCII y los portadores griegos de los acentos, ``sjis_portador``), mismas ranuras de 32 B y la misma

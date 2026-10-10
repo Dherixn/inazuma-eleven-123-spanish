@@ -4,6 +4,7 @@
     python -m ie123kit.definitiva traspasar --logica DIR --origen ina1_save.dat --destino ina2F_save.dat \
         [--espacio-origen 1] [--modo completa|equilibrada|solo_fichajes] [--nivel N] -o salida.dat
     python -m ie123kit.definitiva construir --base archive.fa_traducido -o archive.fa
+    python -m ie123kit.definitiva paquete --mod .../load/mods/00040000000BB800 --plugin Definitiva-release.3gx -o dist/X
 
 Cada DIR es la carpeta que contiene ``unitbase.dat`` y ``unitstat.dat`` de ese juego (en la
 recopilación: ``inazumaN/data_iz/logic`` dentro de archive.fa; en las ROM NDS: ``data_iz/logic/sp``
@@ -107,6 +108,15 @@ def _construir(args: argparse.Namespace) -> int:
     return 0
 
 
+def _paquete(args: argparse.Namespace) -> int:
+    """Carpeta de usuario de Azahar con el mod y el plugin (ver paquete.py)."""
+    from ie123kit.definitiva import paquete
+
+    for linea in paquete.montar(Path(args.mod), Path(args.plugin), Path(args.salida)):
+        print(linea)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m ie123kit.definitiva")
     sub = parser.add_subparsers(dest="orden", required=True)
@@ -133,6 +143,11 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--base", required=True, help="archive.fa YA TRADUCIDO (el de la carpeta de mods)")
     c.add_argument("-o", "--salida", required=True)
     c.set_defaults(func=_construir)
+    q = sub.add_parser("paquete", help="carpeta de usuario de Azahar (Windows, Android, AYN Thor) con mod y plugin")
+    q.add_argument("--mod", required=True, help="carpeta del mod de la traducción (load/mods/00040000000BB800)")
+    q.add_argument("--plugin", required=True, help="Definitiva-release.3gx")
+    q.add_argument("-o", "--salida", required=True)
+    q.set_defaults(func=_paquete)
     args = parser.parse_args(argv)
     return args.func(args)
 
