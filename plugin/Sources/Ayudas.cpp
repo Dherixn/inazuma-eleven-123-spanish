@@ -76,7 +76,8 @@ namespace Definitiva {
                 {"rivales", "Nivel de los rivales", nullptr,
                  "El nivel de los equipos rivales en los partidos de la historia, los duelos y los encuentros por el "
                  "mapa. «A tu nivel»: ninguno por debajo de la media de tus 11 mejores, para cuando traes tu equipo "
-                 "de otro juego. Cuenta desde el siguiente partido.",
+                 "de otro juego. Cuenta desde el siguiente partido. En el IE2, el IE3 y el Ogro (el IE1 lee los "
+                 "niveles al empezar cada partido y no da tiempo a cambiarlos).",
                  {{"Como el original", RIVALES_ORIGINAL}, {"Más fáciles (-30 %)", RIVALES_FACILES},
                   {"Más duros (+25 %)", RIVALES_DUROS}, {"Muy duros (+50 %)", RIVALES_MUY_DUROS},
                   {"A tu nivel", RIVALES_A_TU_NIVEL}},

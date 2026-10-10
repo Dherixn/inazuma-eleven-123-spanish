@@ -62,6 +62,11 @@ esto copia datos del juego al repositorio: son posiciones, tamaños y comportami
   zona, a veces en otro sitio. Medido en Azahar con un duelo del IE2 (registro 35, nivel 1): con el +3 a 77
   sus cuatro rivales salen a nivel 77 y sus atributos pasan de 4-8 a 23-79; con la ayuda «a tu nivel», a 17.
   Así que la dificultad no estaba en `team.pkb` (#11): ver `Nucleo/Rivales.hpp` y `RivalesEnJuego.hpp`.
+  **El IE1 no la tiene cargada en el mapa**: la carga al empezar cada partido (en 0x08AA0504 las dos veces) y la
+  usa en el acto; el plugin la cambiaba, pero los rivales ya estaban hechos. En el IE1 la ayuda no actúa. Para
+  hacerlo habría que redirigir la ruta («/data_iz/logic/games.dat», en la copia del módulo del IE1 en el heap;
+  el juego compone «rom:/inazuma1/data_iz/logic/games.dat» al cargar) a variantes ya ajustadas, y el escritor
+  de `archive.fa` solo sabe sustituir archivos, no añadirlos.
 - Descripciones del IE2: la traducción junta letras de dos en dos con glifos propios (tabla generada fuera
   del repositorio); en ancho completo caben 18 por línea. Las del IE3 van en ancho completo.
 

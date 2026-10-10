@@ -15,8 +15,7 @@ debería verse. Si algo no cuadra, apunta el paso, el juego, el momento de la hi
 ## 1. Inazuma Eleven (IE1)
 
 1. Juega con normalidad. Prueba las Ayudas: encuentros («Ninguno» y «Más»), velocidad al andar, EXP ×2,
-   Pasión y Amistad ×2, PE y PT siempre llenos y «Nivel de los rivales» (cuenta desde el siguiente partido;
-   en un duelo se nota enseguida en los atributos del rival).
+   Pasión y Amistad ×2, PE y PT siempre llenos.
    - Debería verse: los cambios al momento o al volver al mapa (lo dice cada ayuda).
 2. Guarda a menudo. «Partidas» copia los archivos a la SD.
 
@@ -29,7 +28,9 @@ debería verse. Si algo no cuadra, apunta el paso, el juego, el momento de la hi
 3. Sal al título SIN GUARDAR y pulsa Continuar.
    - Debería verse: los del Raimon que ya estaban, con tu nivel del IE1; los que la historia no une, en la
      página 2 (reserva). «Fichajes especiales → Grupo y reserva» los pasa al grupo.
-4. Juega. Cuando la historia una a alguien que traías (por ejemplo, Axel), debería llegar con su nivel del IE1
+4. Prueba «Nivel de los rivales» (Ayudas; del IE2 en adelante): cuenta desde el siguiente partido, y en un
+   duelo se nota enseguida en los atributos del rival. Con un equipo traído, «A tu nivel» evita paseos.
+5. Juega. Cuando la historia una a alguien que traías (por ejemplo, Axel), debería llegar con su nivel del IE1
    en unos segundos (hace falta «Memoria del equipo» activada, que viene de fábrica).
 
 ## 3. Aiden Froste (IE2)
@@ -47,7 +48,9 @@ debería verse. Si algo no cuadra, apunta el paso, el juego, el momento de la hi
    actuar). En Balón Bazar la historia une a Nathan, Kevin y Jack.
    - Debería verse: Mark y ellos con el nivel que traían del IE2.
 5. Tras el primer partido del IE3, mira `/Inazuma123Definitiva/equipo_*.txt`: solo debe haber jugadores
-   tuyos (si aparece un rival, apúntalo: en el IE1 y el IE2 ya se evita).
+   tuyos (si aparece un rival, apúntalo: en el IE1 y el IE2 ya se evita). Y prueba ahí «Nivel de los rivales»
+   (por ejemplo «Muy duros»): comprobado en un partido del IE2; en el IE3 la tabla está en memoria igual, pero
+   falta verlo en un partido (si los rivales no cambian, apúntalo).
 6. **Momento clave: la selección de Inazuma Japón.** Apunta quién queda en el grupo y en la reserva, y si alguien
    sale repetido o con nivel 1 cuando traía más. Los que la historia descarta (Kevin, Max, David…) se pueden
    traer después con «Fichajes especiales → Recuperar jugadores».

@@ -144,7 +144,8 @@ namespace Definitiva {
             gTabla = gCursor = gPausa = 0;
             gTocada = false;
         }
-        if (juego == JuegoActivo::Ninguno || gSinDatos || (modo == RIVALES_ORIGINAL && !gTocada))
+        if (juego == JuegoActivo::Ninguno || juego == JuegoActivo::IE1 || gSinDatos
+            || (modo == RIVALES_ORIGINAL && !gTocada))
             return;
         if (!gPartidos) {
             gPartidos = PartidosDe(Tablas(juego));

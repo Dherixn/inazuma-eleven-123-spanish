@@ -8,6 +8,8 @@ namespace Definitiva {
     // en memoria: la busca a trozos, la comprueba entera antes de escribir (solo se escriben los niveles) y vuelve a
     // ponerlos cuando el juego la recarga, que lo hace al cambiar de zona y a veces en otro sitio. Con el modo
     // original deja la tabla como venía. Cuenta desde el siguiente partido: el juego lee el nivel al prepararlo.
+    // IE2, IE3 y Ogro: tienen la tabla cargada mientras se anda por el mapa. El IE1 la carga al empezar cada partido
+    // y la usa en el acto (medido: el plugin la cambiaba y los rivales ya estaban hechos), así que ahí no se toca.
     // Se llama cada milisegundo desde el hilo de las ayudas; `nivelEquipo` es la media de tus 11 mejores (0 si no se
     // sabe) y solo cuenta en «a tu nivel».
     void CuidarRivales(JuegoActivo juego, int modo, int nivelEquipo);
