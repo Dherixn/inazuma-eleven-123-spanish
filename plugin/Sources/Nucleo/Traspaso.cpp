@@ -151,7 +151,7 @@ namespace Definitiva {
             destino.AnadirJugador(ficha, &indice);
             posicion.emplace(clave(numeroDestino), indice);
             informe.traspasados.push_back({j.id, numeroDestino});
-            if (destino.MeterEnGrupo(indice))
+            if (destino.Formato()->grupoAlTraspasar && destino.MeterEnGrupo(indice))
                 informe.alGrupo.push_back(numeroDestino);
         }
         return informe;

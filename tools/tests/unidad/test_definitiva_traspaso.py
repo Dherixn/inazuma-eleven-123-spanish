@@ -291,11 +291,15 @@ def test_traspaso_al_ie3_quita_al_fichado_el_equipo_y_las_ordenes_del_capitan():
     ie3.datos[ie3.base + pt.OFF_NUM_GRUPO] = 1  # Paolo en el grupo con la lista vacía, como tras el prólogo
     informe = tr.traspasar(ie2, ie3, {1: 1}, tr.Opciones(modo=tr.COMPLETA))
     reg = ie3.datos[ie3._off_jugador(1):ie3._off_jugador(1) + ie3.formato.jugador_paso]
-    # Sin el equipo ni las órdenes de Paolo; entra en el grupo detrás de él, con dorsal y sin sitio (el IE3
-    # lo deja a 0 al entrar).
-    assert [reg[o] for o in (0x4B, 0x57, 0x58, 0x5A, 0x5B)] == [1, 1, 0, 0, 0x10]
-    assert ie3.grupo()[:3] == [3170, 1, 0] and ie3.datos[ie3.base + pt.OFF_NUM_GRUPO] == 2
-    assert informe.al_grupo == [1]
+    # Sin el equipo ni las órdenes de Paolo; en el IE3 el traspaso deja a los que llegan en la reserva (la
+    # historia forma después Inazuma Japón con sus altas).
+    assert [reg[o] for o in (0x4B, 0x57, 0x58, 0x5A, 0x5B)] == [1, 0, 0, 0, 0x10]
+    assert ie3.grupo_efectivo() == [3170] and informe.al_grupo == []
+    # Un fichaje sí entra (lo elige el jugador), detrás de Paolo, con dorsal y sin sitio.
+    op = tr.Opciones(modo=tr.SOLO_FICHAJES, nivel_fichaje=20, exp_de_nivel=lambda n, nv: 100 * nv)
+    i = tr.fichar(ie3, 3005, 20, op)
+    nuevo = ie3.datos[ie3._off_jugador(i):ie3._off_jugador(i) + ie3.formato.jugador_paso]
+    assert ie3.grupo()[:3] == [3170, 3005, 0] and (nuevo[pt.OFF_DORSAL], nuevo[pt.OFF_SITIO]) == (1, 0)
 
 
 def test_sacar_del_grupo_sube_a_los_de_detras_y_limpia_dorsal_y_sitio():

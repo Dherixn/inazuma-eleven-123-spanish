@@ -54,6 +54,8 @@ namespace Definitiva {
         uint32_t offGrupo;
         // Al entrar en el grupo, la ficha recibe también su sitio en la formación (el IE3 lo deja a 0).
         bool sitioAlEntrar;
+        // El traspaso mete a los que llegan en el grupo si cabe (en el IE3 no: ver partida.py).
+        bool grupoAlTraspasar;
         // Campos de la ficha con su sitio en el equipo que no se heredan al crear una (ver partida.py).
         const Reinicio *reinicio;
         uint32_t numReinicio;

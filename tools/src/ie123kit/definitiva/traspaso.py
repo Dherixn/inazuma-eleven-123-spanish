@@ -202,6 +202,6 @@ def traspasar(origen: Partida, destino: Partida, mapa_ids: Mapping[int, int] | N
         indice = destino.anadir_jugador(ficha)
         posicion[clave(id_destino)] = indice
         informe.traspasados.append((j.id, id_destino))
-        if destino.meter_en_grupo(indice):
+        if destino.formato.grupo_al_traspasar and destino.meter_en_grupo(indice):
             informe.al_grupo.append(id_destino)
     return informe

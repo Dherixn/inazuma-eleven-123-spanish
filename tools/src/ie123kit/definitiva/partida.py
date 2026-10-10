@@ -70,6 +70,11 @@ class FormatoPartida:
     off_grupo: int = 0
     # Al entrar en el grupo, la ficha recibe también su sitio en la formación (el IE3 lo deja a 0).
     sitio_al_entrar: bool = True
+    # El traspaso mete a los que llegan en el grupo si cabe. En el IE3 no: empieza con el prólogo de Paolo y la
+    # historia forma después Inazuma Japón con sus altas; con el grupo ya lleno, sus convocados irían a la
+    # reserva. Allí van a la reserva y la historia convoca a los suyos (los fichajes sí entran: los elige el
+    # jugador).
+    grupo_al_traspasar: bool = True
     # Campos de la ficha con su sitio en el equipo que no se heredan al crear una (offset, valor): dorsal,
     # sitio, órdenes (capitán, lanzadores), los cuatro de cabecera y, en el IE3, el equipo (el prólogo es
     # de Paolo Bianchi, del Orfeo: 0x36). Sin esto, los fichados copiaban los del capitán.
@@ -98,6 +103,7 @@ FORMATOS = {
     # pero deja el sitio a 0.
     "ie3.123": FormatoPartida("ie3.123", datos_largo=0x5940, jugadores_inicio=0x11B0, jugador_paso=0x6C, verificado=True,
                               off_grupo=0x11B0 + MAX_JUGADORES * 0x6C + 0x5E, sitio_al_entrar=False,
+                              grupo_al_traspasar=False,
                               reinicio=((0x4B, 1), (0x57, 0), (0x58, 0), (0x5A, 0), (0x5B, 0x10))),
 }
 

@@ -175,10 +175,11 @@ namespace Definitiva {
             if (*puente)
                 MessageBox("Capítulo siguiente", Ajustar(puente))();
             // Corto: el cuadro tiene ocho líneas y la ruta de la copia ya ocupa dos.
-            std::string donde = destino.formato->offGrupo
+            std::string donde = destino.formato->grupoAlTraspasar
                                     ? Utils::Format("%u al grupo y el resto a la reserva",
                                                     static_cast<unsigned>(informe.alGrupo.size()))
-                                    : std::string("a la reserva: la historia los irá convocando");
+                                    : std::string("a la reserva: la historia convoca a los suyos; los demás, "
+                                                  "con Grupo y reserva");
             Aviso(Utils::Format("Llegan %u nuevos (%s) y %u conocidos mejoran.\nCopia: %s\n\n"
                                 "Sal al título SIN GUARDAR y pulsa Continuar.",
                                 static_cast<unsigned>(informe.traspasados.size()), donde.c_str(),
