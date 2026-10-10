@@ -5,9 +5,17 @@
 namespace Definitiva {
 
     // IE1: 32 fichas de 0x60 B desde 0x79C, tres espacios (medido en Azahar); solo se lee.
-    const FormatoPartida FORMATO_IE1 = {"ie1.123", 0x54C0, 0x79C, 0x60, false, 32, 3, 0x3E, true};
-    const FormatoPartida FORMATO_IE2 = {"ie2.123", 0x7DC0, 0x1268, 0x70, true, MAX_JUGADORES, 1, 0x4A, false};
-    const FormatoPartida FORMATO_IE3 = {"ie3.123", 0x5940, 0x11B0, 0x6C, true, MAX_JUGADORES, 1, 0x4A, false};
+    namespace {
+        // Medido en las partidas (2026-10-10), ver tools/src/ie123kit/definitiva/partida.py.
+        const Reinicio REINICIO_IE2[] = {{0x57, 0}, {0x58, 0}, {0x5B, 0x10}, {0x5D, 0}};
+        const Reinicio REINICIO_IE3[] = {{0x4B, 1}, {0x57, 0}, {0x58, 0}, {0x5A, 0}, {0x5B, 0x10}};
+    }
+
+    const FormatoPartida FORMATO_IE1 = {"ie1.123", 0x54C0, 0x79C, 0x60, false, 32, 3, 0x3E, true, 0, nullptr, 0};
+    const FormatoPartida FORMATO_IE2 = {"ie2.123", 0x7DC0, 0x1268, 0x70, true, MAX_JUGADORES, 1, 0x4A, false,
+                                        0x1268 + MAX_JUGADORES * 0x70 + 0x40, REINICIO_IE2, 4};
+    const FormatoPartida FORMATO_IE3 = {"ie3.123", 0x5940, 0x11B0, 0x6C, true, MAX_JUGADORES, 1, 0x4A, false,
+                                        0, REINICIO_IE3, 5};
 
     const char *DescribirError(Error e) {
         switch (e) {
@@ -136,6 +144,61 @@ namespace Definitiva {
         if (indice >= NumJugadores())
             return Error::IndiceFueraDeRango;
         return EscribirReg(indice, j);
+    }
+
+    void NormalizarFichaNueva(std::vector<uint8_t> &crudo, const FormatoPartida &formato) {
+        for (uint32_t k = 0; k < formato.numReinicio; ++k)
+            if (formato.reinicio[k].offset < crudo.size())
+                crudo[formato.reinicio[k].offset] = formato.reinicio[k].valor;
+    }
+
+    bool Partida::MeterEnGrupo(uint32_t indice) {
+        if (!formato_->offGrupo || indice >= NumJugadores())
+            return false;
+        const uint32_t lista = base_ + formato_->offGrupo;
+        const uint32_t oJugador = OffJugador(indice);
+        const uint16_t numero = U16(&datos_[oJugador + 4]);
+        int hueco = -1;
+        uint32_t miembros = 0;
+        for (uint32_t k = 0; k < MAX_GRUPO; ++k) {
+            uint16_t n = U16(&datos_[lista + 2 * k]);
+            if (n == numero)
+                return true;
+            if (n)
+                ++miembros;
+            else if (hueco < 0)
+                hueco = static_cast<int>(k);
+        }
+        if (hueco < 0)
+            return false;
+        bool usado[256] = {};
+        for (uint32_t k = 0; k < NumJugadores(); ++k) {
+            uint32_t o = OffJugador(k);
+            uint16_t n = U16(&datos_[o + 4]);
+            for (uint32_t m = 0; n && m < MAX_GRUPO; ++m)
+                if (U16(&datos_[lista + 2 * m]) == n) {
+                    usado[datos_[o + OFF_DORSAL]] = true;
+                    break;
+                }
+        }
+        uint32_t dorsal = 1;
+        while (dorsal < 255 && usado[dorsal])
+            ++dorsal;
+        ++miembros;
+        PonU16(&datos_[lista + 2 * static_cast<uint32_t>(hueco)], numero);
+        datos_[oJugador + OFF_DORSAL] = static_cast<uint8_t>(dorsal);
+        datos_[oJugador + OFF_SITIO] = static_cast<uint8_t>(miembros);
+        datos_[base_ + OFF_NUM_GRUPO] = static_cast<uint8_t>(miembros);
+        return true;
+    }
+
+    bool Partida::EnGrupo(uint16_t numero) const {
+        if (!formato_->offGrupo || !numero)
+            return false;
+        for (uint32_t k = 0; k < MAX_GRUPO; ++k)
+            if (U16(&datos_[base_ + formato_->offGrupo + 2 * k]) == numero)
+                return true;
+        return false;
     }
 
     Error Partida::AnadirJugador(const JugadorPartida &j, uint32_t *indice) {

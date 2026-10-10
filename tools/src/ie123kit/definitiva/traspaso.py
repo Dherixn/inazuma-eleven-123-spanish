@@ -26,7 +26,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 
-from ie123kit.definitiva.partida import NUM_TECNICAS, JugadorPartida, Partida
+from ie123kit.definitiva.partida import NUM_TECNICAS, JugadorPartida, Partida, normalizar_ficha_nueva
 
 COMPLETA = "completa"
 EQUILIBRADA = "equilibrada"
@@ -55,6 +55,8 @@ class Informe:
     sin_sitio: list[int] = field(default_factory=list)
     sin_plantilla: list[int] = field(default_factory=list)
     con_plantilla: list[int] = field(default_factory=list)
+    # Números de destino de los traspasados que han entrado en el grupo (los demás, a la reserva).
+    al_grupo: list[int] = field(default_factory=list)
 
 
 def exp_minima(curvas: list[list[int]], curva: int, nivel: int) -> int:
@@ -140,10 +142,13 @@ def fichar(destino: Partida, numero: int, nivel: int, op: Opciones, plantilla: b
     tecnicas, niveles = [0] * NUM_TECNICAS, [0] * NUM_TECNICAS
     aprendidas = [(t, 0) for t in op.aprendidas(numero, nivel)] if op.aprendidas else []
     _anadir_tecnicas(tecnicas, niveles, aprendidas)
+    molde = plantilla if plantilla is not None else jugadores[0].crudo
     ficha = JugadorPartida(exp=op.exp_de_nivel(numero, nivel), id=numero, tecnicas=tuple(tecnicas),
                            niveles_tecnica=tuple(niveles), nivel=nivel,
-                           crudo=plantilla if plantilla is not None else jugadores[0].crudo)
-    return destino.anadir_jugador(ficha)
+                           crudo=normalizar_ficha_nueva(molde, destino.formato))
+    indice = destino.anadir_jugador(ficha)
+    destino.meter_en_grupo(indice)
+    return indice
 
 
 def traspasar(origen: Partida, destino: Partida, mapa_ids: Mapping[int, int] | None, op: Opciones) -> Informe:
@@ -193,7 +198,10 @@ def traspasar(origen: Partida, destino: Partida, mapa_ids: Mapping[int, int] | N
         tecnicas, niveles = [0] * len(j.tecnicas), [0] * len(j.tecnicas)
         _anadir_tecnicas(tecnicas, niveles, _tecnicas_heredadas(op, id_destino, nivel, j))
         ficha = JugadorPartida(exp=exp, id=id_destino, tecnicas=tuple(tecnicas), niveles_tecnica=tuple(niveles),
-                               nivel=nivel, crudo=base)
-        posicion[clave(id_destino)] = destino.anadir_jugador(ficha)
+                               nivel=nivel, crudo=normalizar_ficha_nueva(base, destino.formato))
+        indice = destino.anadir_jugador(ficha)
+        posicion[clave(id_destino)] = indice
         informe.traspasados.append((j.id, id_destino))
+        if destino.meter_en_grupo(indice):
+            informe.al_grupo.append(id_destino)
     return informe

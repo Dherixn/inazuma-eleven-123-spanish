@@ -169,10 +169,12 @@ namespace Definitiva {
             const char *puente = TextoPuente(destino.juego, std::string(elegido->juego) == "inazuma3");
             if (*puente)
                 MessageBox("Capítulo siguiente", Ajustar(puente))();
-            Aviso(Utils::Format("Han llegado %u jugadores nuevos y %u ya conocidos han mejorado.\n"
+            Aviso(Utils::Format("Han llegado %u jugadores nuevos (%u al grupo; el resto, a la reserva) y %u ya\n"
+                                "conocidos han mejorado.\n"
                                 "Copia de seguridad: %s\n\n"
                                 "Para verlos, sal al título de %s SIN GUARDAR y pulsa Continuar.",
                                 static_cast<unsigned>(informe.traspasados.size()),
+                                static_cast<unsigned>(informe.alGrupo.size()),
                                 static_cast<unsigned>(informe.mejorados.size()), copia.c_str(), destino.nombre));
         }
 

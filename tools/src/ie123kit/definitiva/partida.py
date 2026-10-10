@@ -40,6 +40,13 @@ INFO_LARGO = 0x7C
 DATOS_INICIO = 0xC0
 OFF_MARCA = 0x48
 OFF_NUM_JUGADORES = 0x57
+# Resumen de la pantalla de carga: cuántos juegan (el grupo).
+OFF_NUM_GRUPO = 0x56
+# Los que juegan: hasta 16 (11 en el campo y 5 en el banquillo); el resto es la reserva.
+MAX_GRUPO = 16
+# Ficha IE2/IE3: dorsal y sitio en la formación (0 en la reserva; el juego los pone a 0 al guardar).
+OFF_DORSAL = 0x57
+OFF_SITIO = 0x58
 NUM_TECNICAS = 6
 NUM_ESPACIOS = 3
 CABECERA_LARGO = 0x40
@@ -59,6 +66,12 @@ class FormatoPartida:
     # (localizado en RAM: el menú muestra el valor de ese byte).
     off_nivel: int = 0x4A
     tecnicas_u8: bool = False
+    # Lista del grupo (u16 por número de jugador, hasta MAX_GRUPO) tras los registros; 0 = sin localizar.
+    off_grupo: int = 0
+    # Campos de la ficha con su sitio en el equipo que no se heredan al crear una (offset, valor): dorsal,
+    # sitio, órdenes (capitán, lanzadores), los cuatro de cabecera y, en el IE3, el equipo (el prólogo es
+    # de Paolo Bianchi, del Orfeo: 0x36). Sin esto, los fichados copiaban los del capitán.
+    reinicio: tuple[tuple[int, int], ...] = ()
 
     @property
     def espacio_largo(self) -> int:
@@ -73,8 +86,15 @@ FORMATOS = {
     "ie1.123": FormatoPartida("ie1.123", datos_largo=0x54C0, jugadores_inicio=0x79C, jugador_paso=0x60,
                               verificado=False, max_jugadores=32, num_espacios=3, off_nivel=0x3E,
                               tecnicas_u8=True),
-    "ie2.123": FormatoPartida("ie2.123", datos_largo=0x7DC0, jugadores_inicio=0x1268, jugador_paso=0x70, verificado=True),
-    "ie3.123": FormatoPartida("ie3.123", datos_largo=0x5940, jugadores_inicio=0x11B0, jugador_paso=0x6C, verificado=True),
+    # Medido en la partida (2026-10-10): el grupo, 0x40 B detrás de los 100 registros; en la ficha, +0x5B
+    # son las órdenes (0x10 | capitán y lanzadores) y +0x5D el puesto entre los cuatro de cabecera.
+    "ie2.123": FormatoPartida("ie2.123", datos_largo=0x7DC0, jugadores_inicio=0x1268, jugador_paso=0x70, verificado=True,
+                              off_grupo=0x1268 + MAX_JUGADORES * 0x70 + 0x40,
+                              reinicio=((0x57, 0), (0x58, 0), (0x5B, 0x10), (0x5D, 0))),
+    # IE3: +0x4B es el equipo (1 en los naturales); el grupo aún no está localizado (los fichados van a la
+    # reserva y la historia los convoca, como a Mark tras el prólogo).
+    "ie3.123": FormatoPartida("ie3.123", datos_largo=0x5940, jugadores_inicio=0x11B0, jugador_paso=0x6C, verificado=True,
+                              reinicio=((0x4B, 1), (0x57, 0), (0x58, 0), (0x5A, 0), (0x5B, 0x10))),
 }
 
 
@@ -122,6 +142,15 @@ def escribir_jugador(jugador: JugadorPartida, formato: FormatoPartida | None = N
         reg[0x44:0x44 + NUM_TECNICAS] = bytes(jugador.niveles_tecnica)
     reg[formato.off_nivel] = jugador.nivel
     return bytes(reg)
+
+
+def normalizar_ficha_nueva(crudo: bytes, formato: FormatoPartida) -> bytes:
+    """Quita a una ficha nueva el sitio en el equipo heredado de su molde (ver ``FormatoPartida.reinicio``)."""
+    datos = bytearray(crudo)
+    for off, valor in formato.reinicio:
+        if off < len(datos):
+            datos[off] = valor
+    return bytes(datos)
 
 
 class Partida:
@@ -204,6 +233,41 @@ class Partida:
             raise ValueError(f"ficha de {len(reg)} B en un formato de {self.formato.jugador_paso} B")
         o = self._off_jugador(indice)
         self.datos[o:o + len(reg)] = reg
+
+    # -- grupo (los que juegan) -------------------------------------------------------------
+    def grupo(self) -> list[int]:
+        """Números de la lista del grupo (0 = hueco); vacía si el formato no la tiene localizada."""
+        if not self.formato.off_grupo:
+            return []
+        o = self.base + self.formato.off_grupo
+        return [struct.unpack_from("<H", self.datos, o + 2 * k)[0] for k in range(MAX_GRUPO)]
+
+    def meter_en_grupo(self, indice: int) -> bool:
+        """Mete al jugador ``indice`` en el grupo si cabe (como un fichaje del juego con sitio): primer
+        hueco de la lista, el dorsal libre más bajo y el sitio siguiente. False si no cabe o el formato no
+        tiene el grupo localizado. Gemelo de ``Partida::MeterEnGrupo``."""
+        lista = self.grupo()
+        if not lista:
+            return False
+        o_jugador = self._off_jugador(indice)
+        numero = struct.unpack_from("<H", self.datos, o_jugador + 4)[0]
+        if numero in lista:
+            return True
+        if 0 not in lista:
+            return False
+        en_grupo = {n for n in lista if n}
+        dorsales = set()
+        for k in range(self.num_jugadores):
+            o = self._off_jugador(k)
+            if struct.unpack_from("<H", self.datos, o + 4)[0] in en_grupo:
+                dorsales.add(self.datos[o + OFF_DORSAL])
+        dorsal = next(d for d in range(1, 256) if d not in dorsales)
+        miembros = len(en_grupo) + 1
+        struct.pack_into("<H", self.datos, self.base + self.formato.off_grupo + 2 * lista.index(0), numero)
+        self.datos[o_jugador + OFF_DORSAL] = dorsal
+        self.datos[o_jugador + OFF_SITIO] = miembros
+        self.datos[self.base + OFF_NUM_GRUPO] = miembros
+        return True
 
     # -- utilidades ------------------------------------------------------------------------
     def _crc(self, inicio: int, largo: int) -> int:

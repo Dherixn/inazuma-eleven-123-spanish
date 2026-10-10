@@ -53,6 +53,13 @@ def crear_partida(clave: str, jugadores: list[tuple[int, int, int, list[int]]], 
         niveles = tuple(rnd.randrange(1, 6) for _ in range(pt.NUM_TECNICAS))
         p.anadir_jugador(pt.JugadorPartida(exp=exp, id=id_, tecnicas=tuple(tec), niveles_tecnica=niveles,
                                            nivel=nivel, crudo=rnd.randbytes(formato.jugador_paso)))
+    if formato.off_grupo:
+        # Grupo de verdad (los primeros, con huecos a 0), a veces vacío y a veces lleno.
+        numeros = [j[0] for j in jugadores]
+        cuantos = min(len(numeros), rnd.choice([0, 4, 12, pt.MAX_GRUPO, rnd.randrange(0, pt.MAX_GRUPO + 1)]))
+        lista_grupo = (numeros[:cuantos] + [0] * pt.MAX_GRUPO)[: pt.MAX_GRUPO]
+        for k, n in enumerate(lista_grupo):
+            struct.pack_into("<H", p.datos, p.base + formato.off_grupo + 2 * k, n)
     p.sellar()
     return p
 
@@ -104,7 +111,8 @@ def informe_python(inf: tr.Informe) -> list[str]:
     def ids(nombre, v): return " ".join([nombre] + [str(x) for x in v])
     return [pares("traspasados", inf.traspasados), pares("mejorados", inf.mejorados),
             ids("sin_pareja", inf.sin_pareja), ids("sin_sitio", inf.sin_sitio),
-            ids("sin_plantilla", inf.sin_plantilla), ids("con_plantilla", inf.con_plantilla)]
+            ids("sin_plantilla", inf.sin_plantilla), ids("con_plantilla", inf.con_plantilla),
+            ids("al_grupo", inf.al_grupo)]
 
 
 def main() -> int:

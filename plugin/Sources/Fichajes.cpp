@@ -19,6 +19,12 @@ namespace Definitiva {
 
     namespace {
 
+        // Dónde queda el fichado: en el grupo (los que juegan) o en la reserva.
+        const char *DondeVa(const Partida &partida, uint16_t numero) {
+            return partida.EnGrupo(numero) ? "Entra en el grupo (página 1 de Equipo)."
+                                           : "Está en la reserva (página 2 de Equipo).";
+        }
+
         const char *gCarpetaCopias = "/Inazuma123Definitiva/partidas";
 
         struct Juego {
@@ -44,6 +50,12 @@ namespace Definitiva {
         constexpr uint16_t AULLIDO_DE_LOBO = 0x114;
 
         void Aviso(const std::string &texto) { MessageBox("Fichajes especiales", Ajustar(texto))(); }
+
+        // Sí o no, con las opciones en español (las de MessageBox salen en inglés).
+        bool Preguntar(const std::string &texto) {
+            Keyboard teclado(Ajustar(texto), {"Sí", "No"});
+            return teclado.Open() == 0;
+        }
 
         int NumeroDeAiden(const JuegoDatos &tablas) {
             for (size_t i = 0; i < tablas.Fichas(); ++i)
@@ -73,7 +85,8 @@ namespace Definitiva {
 
         const char *POSICION[] = {"?", "?", "PR", "?", "DF", "?", "MD", "?", "DL"};
 
-        // Partida y espacio (el IE1 tiene tres) donde fichar; false si no hay o se cancela.
+        // Partida y espacio donde fichar; false si no hay o se cancela. Solo las de formato verificado para
+        // escribir (el del IE1 aún no lo está: no se ofrece).
         bool ElegirPartida(Elegida &e, std::vector<u8> &datos) {
             const Elegida CANDIDATAS[] = {
                 {"/ina1_save.dat", "Inazuma Eleven", &FORMATO_IE1, "inazuma1", &PERFIL_IE1, false, 0},
@@ -87,7 +100,7 @@ namespace Definitiva {
             std::vector<std::string> nombres;
             for (const Elegida &c : CANDIDATAS) {
                 std::vector<u8> d;
-                if (!LeerPartida(c.archivo, d))
+                if (!c.formato->verificado || !LeerPartida(c.archivo, d))
                     continue;
                 for (u32 k = 0; k < c.formato->numEspacios; ++k) {
                     Partida p;
@@ -114,10 +127,8 @@ namespace Definitiva {
         }
 
         void FichajeLibre(MenuEntry *) {
-            if (MessageBox("Fichaje libre",
-                           Ajustar("Es una ayuda: deja fichar a cualquier jugador del juego, también los que solo se "
-                                   "conseguían por Wi-Fi o StreetPass, y hace el juego más fácil. ¿Seguir?"),
-                           DialogType::DialogYesNo)() == false)
+            if (!Preguntar("Fichaje libre\n\nEs una ayuda: deja fichar a cualquier jugador del juego, también los que "
+                           "solo se conseguían por Wi-Fi o StreetPass, y hace el juego más fácil. ¿Seguir?"))
                 return;
             Elegida e;
             std::vector<u8> datos;
@@ -219,9 +230,10 @@ namespace Definitiva {
                 Aviso(Utils::Format("No se ha podido guardar. Tu partida sigue como estaba (copia en %s).", copia.c_str()));
                 return;
             }
-            Aviso(Utils::Format("%s se une al equipo con nivel %u.\nCopia de seguridad en la SD: %s\n\n"
+            Aviso(Utils::Format("%s se une al equipo con nivel %u.\n%s\nCopia de seguridad en la SD: %s\n\n"
                                 "Para verlo, sal al título de %s SIN GUARDAR y pulsa Continuar.",
-                                nombre(ficha).c_str(), nivel, copia.c_str(), e.nombre));
+                                nombre(ficha).c_str(), nivel, DondeVa(partida, t->Numero(ficha)), copia.c_str(),
+                                e.nombre));
         }
 
         void FicharAiden(MenuEntry *) {
@@ -313,11 +325,12 @@ namespace Definitiva {
             }
             Aviso(Utils::Format("«Hermano, esta vez jugamos los dos.»\n\n"
                                 "Aiden Froste se une al equipo con el\n"
-                                "nivel de Shawn (%u).\n"
+                                "nivel de Shawn (%u).\n%s\n"
                                 "Copia de seguridad en la SD:\n%s\n\n"
                                 "Para verlo, sal al título de %s\n"
                                 "SIN GUARDAR y pulsa Continuar.",
-                                hermano.nivel, copia.c_str(), juego.nombre));
+                                hermano.nivel, DondeVa(partida, static_cast<uint16_t>(numero)), copia.c_str(),
+                                juego.nombre));
         }
 
     }

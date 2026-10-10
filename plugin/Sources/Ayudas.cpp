@@ -311,9 +311,10 @@ namespace Definitiva {
             for (u16 id : p.tecnicas)
                 detalle += "\n- " + NombreTecnica(id);
             std::string nombre = NombreDeJugador(juego, *perfil, p.numero);
-            if (!MessageBox(titulo, Ajustar(nombre + " sabía:") + detalle + "\n\n" +
-                                        Ajustar("Se ponen en sus huecos libres (tiene 6). ¿Devolvérselas?"),
-                            DialogType::DialogYesNo)())
+            Keyboard confirmar(Ajustar(nombre + " sabía:") + detalle + "\n\n" +
+                                   Ajustar("Se ponen en sus huecos libres (tiene 6). ¿Devolvérselas?"),
+                               {"Sí", "No"});
+            if (confirmar.Open() != 0)
                 return;
             int puestas = DevolverTecnicas(p.numero, p.tecnicas);
             if (puestas < 0)

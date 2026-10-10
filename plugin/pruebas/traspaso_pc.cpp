@@ -124,6 +124,7 @@ int main(int argc, char **argv) {
     Lista("sin_sitio", inf.sinSitio);
     Lista("sin_plantilla", inf.sinPlantilla);
     Lista("con_plantilla", inf.conPlantilla);
+    Lista("al_grupo", inf.alGrupo);
     FILE *f = std::fopen(argv[3], "wb");
     std::fwrite(destino.Datos().data(), 1, destino.Datos().size(), f);
     std::fclose(f);

@@ -52,6 +52,8 @@ namespace Definitiva {
         std::vector<uint16_t> sinSitio;
         std::vector<uint16_t> sinPlantilla;
         std::vector<uint16_t> conPlantilla;
+        // Números de destino de los traspasados que han entrado en el grupo (los demás, a la reserva).
+        std::vector<uint16_t> alGrupo;
     };
 
     // Copia los fichajes de `origen` en `destino` (en memoria; después hay que sellar).

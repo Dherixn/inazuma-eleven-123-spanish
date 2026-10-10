@@ -142,6 +142,7 @@ namespace Definitiva {
                 informe.sinPlantilla.push_back(j.id);
                 continue;
             }
+            NormalizarFichaNueva(ficha.crudo, *destino.Formato());
             ficha.id = numeroDestino;
             ficha.nivel = nivel;
             ficha.exp = exp;
@@ -150,6 +151,8 @@ namespace Definitiva {
             destino.AnadirJugador(ficha, &indice);
             posicion.emplace(clave(numeroDestino), indice);
             informe.traspasados.push_back({j.id, numeroDestino});
+            if (destino.MeterEnGrupo(indice))
+                informe.alGrupo.push_back(numeroDestino);
         }
         return informe;
     }
@@ -168,6 +171,7 @@ namespace Definitiva {
             return Fichaje::SinPlantilla;
         JugadorPartida ficha;
         ficha.crudo = plantilla ? *plantilla : destino.Jugador(0).crudo;
+        NormalizarFichaNueva(ficha.crudo, *destino.Formato());
         ficha.id = numero;
         ficha.nivel = nivel;
         ficha.exp = op.expDeNivel(numero, nivel, op.contexto);
@@ -175,6 +179,7 @@ namespace Definitiva {
         uint32_t i;
         if (destino.AnadirJugador(ficha, &i) != Error::Ninguno)
             return Fichaje::SinSitio;
+        destino.MeterEnGrupo(i);
         if (indice)
             *indice = i;
         return Fichaje::Hecho;

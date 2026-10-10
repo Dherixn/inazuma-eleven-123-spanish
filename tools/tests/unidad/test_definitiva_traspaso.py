@@ -238,3 +238,57 @@ def test_fichar_no_duplica_ni_pasa_del_maximo():
         tr.fichar(lleno, 1307, 10, _op_fichaje())
     with pytest.raises(tr.FichajeError, match="opciones"):
         tr.fichar(p, 5, 10, tr.Opciones())
+
+
+def _con_grupo(p, numeros, dorsales):
+    """Pone la lista del grupo y los dorsales como los deja el juego (IE2)."""
+    for k, n in enumerate((list(numeros) + [0] * pt.MAX_GRUPO)[:pt.MAX_GRUPO]):
+        struct.pack_into("<H", p.datos, p.base + p.formato.off_grupo + 2 * k, n)
+    for i, d in enumerate(dorsales):
+        p.datos[p._off_jugador(i) + pt.OFF_DORSAL] = d
+    p.datos[p.base + pt.OFF_NUM_GRUPO] = len(numeros)
+
+
+def test_fichar_normaliza_la_ficha_y_entra_en_el_grupo_con_sitio():
+    # Como la partida de pruebas del IE2: 12 en el grupo con dorsales 1..12 y el capitán con sus órdenes.
+    p = _partida("ie2.123", [(n, 10, 5000, []) for n in range(1, 13)])
+    _con_grupo(p, range(1, 13), range(1, 13))
+    capitan = p._off_jugador(0)
+    p.datos[capitan + 0x58], p.datos[capitan + 0x5B], p.datos[capitan + 0x5D] = 1, 0x1F, 1
+    op = tr.Opciones(modo=tr.SOLO_FICHAJES, nivel_fichaje=35, exp_de_nivel=lambda n, nv: 100 * nv)
+    i = tr.fichar(p, 1307, 35, op)
+    reg = p.datos[p._off_jugador(i):p._off_jugador(i) + p.formato.jugador_paso]
+    assert p.grupo()[:13] == list(range(1, 13)) + [1307]
+    assert (reg[pt.OFF_DORSAL], reg[pt.OFF_SITIO], reg[0x5B], reg[0x5D]) == (13, 13, 0x10, 0)
+    assert p.datos[p.base + pt.OFF_NUM_GRUPO] == 13
+    assert reg[0x10:0x12] == b"\xAA\xBB"  # lo demás del molde sigue igual
+
+
+def test_con_el_grupo_lleno_el_fichado_va_a_la_reserva():
+    p = _partida("ie2.123", [(n, 10, 5000, []) for n in range(1, 17)])
+    _con_grupo(p, range(1, 17), range(1, 17))
+    op = tr.Opciones(modo=tr.SOLO_FICHAJES, nivel_fichaje=20, exp_de_nivel=lambda n, nv: 100 * nv)
+    i = tr.fichar(p, 1307, 20, op)
+    reg = p.datos[p._off_jugador(i):p._off_jugador(i) + p.formato.jugador_paso]
+    assert 1307 not in p.grupo() and (reg[pt.OFF_DORSAL], reg[pt.OFF_SITIO]) == (0, 0)
+
+
+def test_el_dorsal_es_el_libre_mas_bajo():
+    p = _partida("ie2.123", [(1, 10, 5000, []), (2, 10, 5000, []), (3, 10, 5000, [])])
+    _con_grupo(p, [1, 2, 3], [1, 3, 4])
+    op = tr.Opciones(modo=tr.SOLO_FICHAJES, nivel_fichaje=20, exp_de_nivel=lambda n, nv: 100 * nv)
+    i = tr.fichar(p, 50, 20, op)
+    assert p.datos[p._off_jugador(i) + pt.OFF_DORSAL] == 2
+
+
+def test_traspaso_al_ie3_quita_al_fichado_el_equipo_y_las_ordenes_del_capitan():
+    # El IE3 empieza con Paolo Bianchi (Orfeo): sus campos de equipo no deben copiarse a los que llegan.
+    ie2 = _partida("ie2.123", [(1, 40, 20000, [0xA2])])
+    ie3 = _partida("ie3.123", [(3170, 30, 2379, [])])
+    paolo = ie3._off_jugador(0)
+    for off, v in ((0x4B, 0x36), (0x57, 10), (0x58, 1), (0x5A, 1), (0x5B, 0x11)):
+        ie3.datos[paolo + off] = v
+    informe = tr.traspasar(ie2, ie3, {1: 1}, tr.Opciones(modo=tr.COMPLETA))
+    reg = ie3.datos[ie3._off_jugador(1):ie3._off_jugador(1) + ie3.formato.jugador_paso]
+    assert [reg[o] for o in (0x4B, 0x57, 0x58, 0x5A, 0x5B)] == [1, 0, 0, 0, 0x10]
+    assert informe.al_grupo == []  # el grupo del IE3 aún no está localizado: a la reserva
