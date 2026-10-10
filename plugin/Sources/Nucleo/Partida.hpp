@@ -24,8 +24,8 @@ namespace Definitiva {
     constexpr uint32_t NUM_ESPACIOS = 3;
     constexpr uint32_t CABECERA_LARGO = 0x40;
 
-    // Cada juego guarda un archivo (ina1_save.dat…) con una cabecera común y tres espacios de
-    // 0x80 B de info + el bloque de datos. Los offsets son los del espacio 1.
+    // Cada juego guarda un archivo de 64 KB (ina1_save.dat con tres espacios, ina2F_save.dat con
+    // uno…): cabecera común y espacios de 0x80 B de info + el bloque de datos. Offsets del espacio 1.
     struct FormatoPartida {
         const char *nombre;
         uint32_t datosLargo;
@@ -33,8 +33,13 @@ namespace Definitiva {
         uint32_t jugadorPaso;
         bool verificado;
         uint32_t maxJugadores;
+        uint32_t numEspacios;
+        // IE2/IE3: 6 técnicas u16 en +0x38, sus niveles en +0x44 y nivel en +0x4A.
+        // IE1 de la recopilación: técnicas de 1 B, sin niveles, y nivel en +0x3E.
+        uint32_t offNivel;
+        bool tecnicasU8;
         uint32_t EspacioLargo() const { return 0x80 + datosLargo; }
-        uint32_t ArchivoLargo() const { return CABECERA_LARGO + NUM_ESPACIOS * EspacioLargo(); }
+        uint32_t ArchivoLargo() const { return CABECERA_LARGO + numEspacios * EspacioLargo(); }
     };
 
     extern const FormatoPartida FORMATO_IE1;
@@ -68,8 +73,8 @@ namespace Definitiva {
         std::vector<uint8_t> crudo;
     };
 
-    JugadorPartida LeerJugador(const uint8_t *reg, size_t largo);
-    std::vector<uint8_t> EscribirJugador(const JugadorPartida &j);
+    JugadorPartida LeerJugador(const uint8_t *reg, const FormatoPartida &formato);
+    std::vector<uint8_t> EscribirJugador(const JugadorPartida &j, const FormatoPartida &formato);
 
     class Partida {
     public:

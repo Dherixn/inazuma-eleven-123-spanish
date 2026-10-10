@@ -4,10 +4,10 @@
 
 namespace Definitiva {
 
-    // IE1: 32 fichas de 0x60 B desde 0x79C (medido en Azahar); solo se lee.
-    const FormatoPartida FORMATO_IE1 = {"ie1.123", 0x54C0, 0x79C, 0x60, false, 32};
-    const FormatoPartida FORMATO_IE2 = {"ie2.123", 0x7DC0, 0x1268, 0x70, true, MAX_JUGADORES};
-    const FormatoPartida FORMATO_IE3 = {"ie3.123", 0x5940, 0x11B0, 0x6C, true, MAX_JUGADORES};
+    // IE1: 32 fichas de 0x60 B desde 0x79C, tres espacios (medido en Azahar); solo se lee.
+    const FormatoPartida FORMATO_IE1 = {"ie1.123", 0x54C0, 0x79C, 0x60, false, 32, 3, 0x3E, true};
+    const FormatoPartida FORMATO_IE2 = {"ie2.123", 0x7DC0, 0x1268, 0x70, true, MAX_JUGADORES, 1, 0x4A, false};
+    const FormatoPartida FORMATO_IE3 = {"ie3.123", 0x5940, 0x11B0, 0x6C, true, MAX_JUGADORES, 1, 0x4A, false};
 
     const char *DescribirError(Error e) {
         switch (e) {
@@ -53,33 +53,37 @@ namespace Definitiva {
         return c ^ 0xFFFFFFFFu;
     }
 
-    JugadorPartida LeerJugador(const uint8_t *reg, size_t largo) {
+    JugadorPartida LeerJugador(const uint8_t *reg, const FormatoPartida &formato) {
         JugadorPartida j;
         j.exp = U32(reg + 0x00);
         j.id = U16(reg + 0x04);
         for (uint32_t k = 0; k < NUM_TECNICAS; ++k) {
-            j.tecnicas[k] = U16(reg + 0x38 + 2 * k);
-            j.nivelesTecnica[k] = reg[0x44 + k];
+            j.tecnicas[k] = formato.tecnicasU8 ? reg[0x38 + k] : U16(reg + 0x38 + 2 * k);
+            j.nivelesTecnica[k] = formato.tecnicasU8 ? 0 : reg[0x44 + k];
         }
-        j.nivel = reg[0x4A];
-        j.crudo.assign(reg, reg + largo);
+        j.nivel = reg[formato.offNivel];
+        j.crudo.assign(reg, reg + formato.jugadorPaso);
         return j;
     }
 
-    std::vector<uint8_t> EscribirJugador(const JugadorPartida &j) {
+    std::vector<uint8_t> EscribirJugador(const JugadorPartida &j, const FormatoPartida &formato) {
         std::vector<uint8_t> reg = j.crudo;
         PonU32(&reg[0x00], j.exp);
         PonU16(&reg[0x04], j.id);
         for (uint32_t k = 0; k < NUM_TECNICAS; ++k) {
-            PonU16(&reg[0x38 + 2 * k], j.tecnicas[k]);
-            reg[0x44 + k] = j.nivelesTecnica[k];
+            if (formato.tecnicasU8) {
+                reg[0x38 + k] = static_cast<uint8_t>(j.tecnicas[k] & 0xFF);
+            } else {
+                PonU16(&reg[0x38 + 2 * k], j.tecnicas[k]);
+                reg[0x44 + k] = j.nivelesTecnica[k];
+            }
         }
-        reg[0x4A] = j.nivel;
+        reg[formato.offNivel] = j.nivel;
         return reg;
     }
 
     bool Partida::Cargar(std::vector<uint8_t> datos, const FormatoPartida *formato, uint32_t espacio) {
-        if (!formato || espacio >= NUM_ESPACIOS)
+        if (!formato || espacio >= formato->numEspacios)
             return false;
         uint32_t base = espacio * formato->EspacioLargo();
         if (datos.size() < base + DATOS_INICIO + formato->datosLargo)
@@ -117,11 +121,11 @@ namespace Definitiva {
     }
 
     JugadorPartida Partida::Jugador(uint32_t indice) const {
-        return LeerJugador(&datos_[OffJugador(indice)], formato_->jugadorPaso);
+        return LeerJugador(&datos_[OffJugador(indice)], *formato_);
     }
 
     Error Partida::EscribirReg(uint32_t indice, const JugadorPartida &j) {
-        std::vector<uint8_t> reg = EscribirJugador(j);
+        std::vector<uint8_t> reg = EscribirJugador(j, *formato_);
         if (reg.size() != formato_->jugadorPaso)
             return Error::TamanoFicha;
         std::memcpy(&datos_[OffJugador(indice)], reg.data(), reg.size());

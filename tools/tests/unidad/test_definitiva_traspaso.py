@@ -2,6 +2,7 @@
 
 import struct
 import zlib
+from dataclasses import replace
 
 import pytest
 
@@ -18,8 +19,7 @@ def _partida(clave, jugadores, version=None):
     datos[0x04:0x04 + len(version)] = version.encode()
     struct.pack_into("<I", datos, pt.OFF_MARCA, pt.MARCA)
     struct.pack_into("<I", datos, 0, zlib.crc32(datos[0x04:0x40]))
-    p = pt.Partida(bytes(datos), pt.FormatoPartida(formato.nombre, formato.datos_largo, formato.jugadores_inicio,
-                                                   formato.jugador_paso, verificado=True))
+    p = pt.Partida(bytes(datos), replace(formato, verificado=True))
     for (id_, nivel, exp, tecnicas) in jugadores:
         crudo = bytearray(formato.jugador_paso)
         crudo[0x10:0x12] = b"\xAA\xBB"  # campo sin interpretar que debe sobrevivir
@@ -181,8 +181,9 @@ def test_tecnicas_aprendidas_en_el_juego_nuevo_mas_las_que_traia():
     mark, nuevo = ie2.jugadores()
     # Mark ya estaba: sube a 35 y aprende la Mano Mágica del IE2 (nivel 30).
     assert (mark.nivel, mark.exp, mark.tecnicas[:2]) == (35, 35 * 35, (0xA2, 0xB6))
-    # El nuevo llega con lo que sabe a nivel 20 en el IE2 y con la técnica que traía.
-    assert nuevo.tecnicas[:3] == (0x10, 0x20, 0x92) and nuevo.niveles_tecnica[:3] == (0, 0, 1)
+    # El nuevo llega con lo que sabe a nivel 20 en el IE2 y con la técnica que traía (el IE1 no tiene
+    # niveles de técnica: todas empiezan en el primero).
+    assert nuevo.tecnicas[:3] == (0x10, 0x20, 0x92) and nuevo.niveles_tecnica[:3] == (0, 0, 0)
 
 
 def test_ficha_del_ie1_tecnicas_de_un_byte_y_nivel_en_0x3e():

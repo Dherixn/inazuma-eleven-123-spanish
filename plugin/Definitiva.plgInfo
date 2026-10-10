@@ -21,4 +21,4 @@ Description: |
 # Any: lo cargan Luma3DS y Azahar. Console lo rechaza Azahar y Citra lo rechaza Luma.
 Compatibility: Any
 
-MemorySize: 2MiB
+MemorySize: 5MiB

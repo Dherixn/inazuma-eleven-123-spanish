@@ -17,6 +17,7 @@ import subprocess
 import sys
 import tempfile
 import zlib
+from dataclasses import replace
 from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent
@@ -44,8 +45,7 @@ def crear_partida(clave: str, jugadores: list[tuple[int, int, int, list[int]]], 
     struct.pack_into("<I", datos, pt.OFF_MARCA, pt.MARCA)
     struct.pack_into("<I", datos, 0, zlib.crc32(datos[0x04:0x40]))
     datos[pt.OFF_NUM_JUGADORES] = 0
-    p = pt.Partida(bytes(datos), pt.FormatoPartida(formato.nombre, formato.datos_largo, formato.jugadores_inicio,
-                                                   formato.jugador_paso, verificado=True))
+    p = pt.Partida(bytes(datos), replace(formato, verificado=True))
     for id_, nivel, exp, tecnicas in jugadores:
         tec = (tecnicas + [0] * pt.NUM_TECNICAS)[: pt.NUM_TECNICAS]
         niveles = tuple(rnd.randrange(1, 6) for _ in range(pt.NUM_TECNICAS))
@@ -72,7 +72,7 @@ def casos(n: int, rnd: random.Random):
         nivel = rnd.randrange(5, 60)
         if k % 5 == 4:
             # IE1 -> IE2: mismo tamaño de ficha, sin plantilla.
-            origen = crear_partida("ie1.123", jugadores_al_azar(rnd, sorted(ie1_ie2), rnd.randrange(1, 60)), rnd)
+            origen = crear_partida("ie1.123", jugadores_al_azar(rnd, sorted(ie1_ie2), rnd.randrange(1, 33)), rnd)
             destino = crear_partida("ie2.123", jugadores_al_azar(rnd, sorted(ie1_ie2.values()), rnd.randrange(0, 30)), rnd)
             yield f"c{k}", origen, destino, modo, nivel, "ie1-ie2", ie1_ie2
             continue
@@ -86,6 +86,15 @@ def casos(n: int, rnd: random.Random):
                                                     max(0, destino_n - len(destino_ids))), rnd)
         origen = crear_partida("ie2.123", comunes, rnd)
         yield f"c{k}", origen, destino, modo, nivel, "ie2-ie3", ie2_ie3
+
+
+def exp_prueba(numero: int, nivel: int) -> int:
+    return 100 * nivel * nivel + numero
+
+
+def aprendidas_prueba(n: int, nivel: int) -> list[int]:
+    aprende = [(n % 400 + 1, 1), (n % 300 + 101, 10), (n % 200 + 201, 30), (n % 100 + 301, 100)]
+    return [t for t, lv in aprende if lv < 100 and lv <= nivel]
 
 
 def informe_python(inf: tr.Informe) -> list[str]:
@@ -111,7 +120,7 @@ def main() -> int:
             (tmp / f"{nombre}.d").write_bytes(destino.sellar())
             op = tr.Opciones(modo=modo, nivel_tope=nivel if modo == tr.EQUILIBRADA else None,
                              nivel_fichaje=nivel if modo == tr.SOLO_FICHAJES else None,
-                             exp_de_nivel=lambda _id, n: 100 * n * n)
+                             exp_de_nivel=exp_prueba, aprendidas=aprendidas_prueba, clave_destino=lambda n: n // 3)
             inf = tr.traspasar(origen, destino, tabla, op)
             esperado[nombre] = (informe_python(inf), destino.sellar())
             rel = f"pruebas/{tmp.name}/{nombre}"
@@ -136,7 +145,10 @@ def main() -> int:
                 print(f"{nombre}: informe distinto\n  py: {lineas}\n  c++: {salida}")
             elif (tmp / f"{nombre}.s").read_bytes() != datos:
                 fallos += 1
-                print(f"{nombre}: bytes distintos")
+                cpp = (tmp / f"{nombre}.s").read_bytes()
+                primero = next(i for i, (a, b) in enumerate(zip(cpp, datos, strict=False)) if a != b and i >= 0xC0)
+                print(f"{nombre}: bytes distintos desde 0x{primero:X} (c++ {cpp[primero:primero + 8].hex()} "
+                      f"py {datos[primero:primero + 8].hex()})")
         print(f"{len(esperado)} casos, {fallos} diferencias")
         return 1 if fallos else 0
     finally:

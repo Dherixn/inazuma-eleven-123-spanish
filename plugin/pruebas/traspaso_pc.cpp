@@ -3,7 +3,8 @@
 //   traspaso_pc ORIGEN DESTINO SALIDA MODO [TOPE|FICHAJE] [MAPA]
 //
 // MODO: completa | equilibrada | solo_fichajes.  MAPA: ie1-ie2 | ie2-ie3 | lista:A=B,C=D
-// La EXP de un nivel, en las pruebas, es 100 * nivel² (sin curvas reales).
+// Datos de destino de prueba (iguales en comparar.py): EXP = 100·nivel² + número; técnicas por nivel
+// = (n%400+1, nv 1), (n%300+101, nv 10), (n%200+201, nv 30), (n%100+301, nv 100); clave = número / 3.
 // Imprime el informe en una línea por apartado y escribe la partida de destino sellada.
 
 #include <algorithm>
@@ -29,7 +30,20 @@ static std::vector<uint8_t> Leer(const char *ruta) {
     return datos;
 }
 
-static uint32_t ExpCuadratica(uint16_t, uint8_t nivel, void *) { return 100u * nivel * nivel; }
+static uint32_t ExpPrueba(uint16_t numero, uint8_t nivel, void *) { return 100u * nivel * nivel + numero; }
+
+static int AprendidasPrueba(uint16_t n, uint8_t nivel, uint16_t salida[4], void *) {
+    const uint16_t tec[4] = {static_cast<uint16_t>(n % 400 + 1), static_cast<uint16_t>(n % 300 + 101),
+                             static_cast<uint16_t>(n % 200 + 201), static_cast<uint16_t>(n % 100 + 301)};
+    const uint8_t nv[4] = {1, 10, 30, 100};
+    int k = 0;
+    for (int i = 0; i < 4; ++i)
+        if (nv[i] < 100 && nv[i] <= nivel)
+            salida[k++] = tec[i];
+    return k;
+}
+
+static uint32_t ClavePrueba(uint16_t numero, void *) { return numero / 3; }
 
 static void Lista(const char *nombre, const std::vector<Par> &v) {
     std::printf("%s", nombre);
@@ -55,7 +69,9 @@ int main(int argc, char **argv) {
         return 2;
     }
     Opciones op;
-    op.expDeNivel = ExpCuadratica;
+    op.expDeNivel = ExpPrueba;
+    op.aprendidas = AprendidasPrueba;
+    op.clave = ClavePrueba;
     std::string modo = argv[4];
     int nivel = argc > 5 ? std::atoi(argv[5]) : -1;
     if (modo == "completa") op.modo = Modo::Completa;

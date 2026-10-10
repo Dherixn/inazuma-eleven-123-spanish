@@ -89,15 +89,67 @@ namespace Definitiva {
         time_t ahora = time(nullptr);
         char fecha[32];
         strftime(fecha, sizeof(fecha), "%Y-%m-%d_%H%M%S", localtime(&ahora));
-        Directory::Create(carpeta);
         destino = carpeta + "/" + fecha;
-        Directory::Create(destino);
+        // Directory::Create no crea carpetas intermedias: se crea la ruta paso a paso.
+        for (size_t corte = destino.find('/', 1); ; corte = destino.find('/', corte + 1)) {
+            Directory::Create(destino.substr(0, corte));
+            if (corte == std::string::npos)
+                break;
+        }
+        if (!Directory::IsExists(destino)) {
+            FSUSER_CloseArchive(archivo);
+            return -1;
+        }
         int copiados = 0;
         for (const ArchivoPartida &info : archivos)
             if (Copiar(archivo, info, destino))
                 ++copiados;
         FSUSER_CloseArchive(archivo);
         return copiados;
+    }
+
+    bool LeerPartida(const std::string &nombre, std::vector<u8> &datos) {
+        FS_Archive archivo;
+        if (!AbrirArchivoPartida(archivo))
+            return false;
+        Handle h;
+        bool ok = false;
+        if (R_SUCCEEDED(FSUSER_OpenFile(&h, archivo, fsMakePath(PATH_ASCII, nombre.c_str()), FS_OPEN_READ, 0))) {
+            u64 tamano = 0;
+            if (R_SUCCEEDED(FSFILE_GetSize(h, &tamano)) && tamano > 0 && tamano <= 0x100000) {
+                datos.resize(static_cast<size_t>(tamano));
+                u32 leidos = 0;
+                ok = R_SUCCEEDED(FSFILE_Read(h, &leidos, 0, datos.data(), static_cast<u32>(tamano)))
+                     && leidos == tamano;
+            }
+            FSFILE_Close(h);
+        }
+        FSUSER_CloseArchive(archivo);
+        return ok;
+    }
+
+    bool EscribirPartida(const std::string &nombre, const std::vector<u8> &datos) {
+        FS_Archive archivo;
+        if (!AbrirArchivoPartida(archivo))
+            return false;
+        Handle h;
+        bool ok = false;
+        // Solo se sobrescriben archivos que ya existen y con su mismo tamaño: nada de crear ni truncar.
+        if (R_SUCCEEDED(FSUSER_OpenFile(&h, archivo, fsMakePath(PATH_ASCII, nombre.c_str()), FS_OPEN_WRITE, 0))) {
+            u64 tamano = 0;
+            if (R_SUCCEEDED(FSFILE_GetSize(h, &tamano)) && tamano == datos.size()) {
+                u32 escritos = 0;
+                ok = R_SUCCEEDED(FSFILE_Write(h, &escritos, 0, datos.data(), static_cast<u32>(datos.size()),
+                                              FS_WRITE_FLUSH))
+                     && escritos == datos.size();
+            }
+            FSFILE_Close(h);
+        }
+        // Las partidas de 3DS no quedan escritas hasta confirmar el archive.
+        if (ok)
+            ok = R_SUCCEEDED(FSUSER_ControlArchive(archivo, ARCHIVE_ACTION_COMMIT_SAVE_DATA, nullptr, 0, nullptr, 0));
+        FSUSER_CloseArchive(archivo);
+        return ok;
     }
 
 }

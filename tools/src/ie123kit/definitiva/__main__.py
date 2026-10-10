@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import csv
 import sys
+import zlib
 from collections import Counter
 from pathlib import Path
 
@@ -55,24 +56,48 @@ def _pares_cpp(nombre: str, pares: dict[int, int]) -> str:
     return f"static const Definitiva::Par {nombre}[] = {{\n" + "\n".join(filas) + "\n};\n"
 
 
+def _fichas_destino_cpp(nombre: str, datos: datos_juego.DatosJuego) -> str:
+    """Datos de destino por número de jugador, ordenados: curva, clave de personaje y técnicas por nivel."""
+    filas = []
+    for numero, ficha in sorted(datos.indice_de.items()):
+        tecs = list(datos.aprende[ficha])[:4] + [(0, 0)] * (4 - len(datos.aprende[ficha]))
+        clave = zlib.crc32(datos.personaje(numero)) & 0xFFFFFFFF
+        t = ", ".join(str(x) for x, _ in tecs)
+        n = ", ".join(str(min(lv, 255)) for _, lv in tecs)
+        filas.append(f"    {{{numero}, {datos.curva[ficha]}, 0x{clave:08X}u, {{{t}}}, {{{n}}}}},")
+    return f"static const Definitiva::FichaDestino {nombre}[] = {{\n" + "\n".join(filas) + "\n};\n"
+
+
+def _curvas_cpp(nombre: str, datos: datos_juego.DatosJuego) -> str:
+    filas = ["    {" + ", ".join(str(v) for v in curva) + "}," for curva in datos.curvas]
+    return (f"static const uint32_t {nombre}[{len(datos.curvas)}][{datos_juego.VALORES_POR_CURVA}] = {{\n"
+            + "\n".join(filas) + "\n};\n")
+
+
 def _cabecera(args: argparse.Namespace) -> int:
     ie1, ie2, ie3 = _tres_juegos(args)
     if args.plataforma == "3ds":
-        ie1_ie2 = identidades.emparejar_por_cara(ie1, ie2)
-        ie2_ie3 = identidades.emparejar_por_cara(ie2, ie3)
+        d1, d2, d3 = (datos_juego.cargar(Path(getattr(args, j)), fichas.PERFILES[f"3ds.{j}"]) for j in ("ie1", "ie2", "ie3"))
+        # La partida guarda números de jugador: la tabla por cara (ficha → ficha) se pasa a números.
+        ie1_ie2 = datos_juego.mapa_de_numeros(identidades.emparejar_por_cara(ie1, ie2), d1, d2)
+        ie2_ie3 = datos_juego.mapa_de_numeros(identidades.emparejar_por_cara(ie2, ie3), d2, d3)
     else:
         ie1_ie2 = identidades.ie1_a_ie2(ie1, ie2)
         ie2_ie3 = {a: b for a, (b, _) in identidades.emparejar(ie2, ie3).items()}
-    texto = (
-        "// Generado por `python -m ie123kit.definitiva cabecera` a partir de las fichas de jugador"
-        f" ({args.plataforma}). No editar a mano.\n"
-        "// Pares (número en el juego de origen, número en el de destino), ordenados por origen.\n\n"
-        + _pares_cpp("EQUIV_IE1_IE2", ie1_ie2) + "\n" + _pares_cpp("EQUIV_IE2_IE3", ie2_ie3)
-    )
+    cabecera = ("// Generado por `python -m ie123kit.definitiva cabecera` a partir de las tablas del juego"
+                f" ({args.plataforma}). No editar a mano.\n")
+    texto = (cabecera + "// Pares (número de jugador en el juego de origen, en el de destino), ordenados por origen.\n\n"
+             + _pares_cpp("EQUIV_IE1_IE2", ie1_ie2) + "\n" + _pares_cpp("EQUIV_IE2_IE3", ie2_ie3))
     salida = Path(args.salida)
     salida.parent.mkdir(parents=True, exist_ok=True)
     salida.write_text(texto, encoding="utf-8", newline="\n")
     print(f"IE1→IE2: {len(ie1_ie2)} pares; IE2→IE3: {len(ie2_ie3)} pares; escrito: {salida}")
+    if args.plataforma == "3ds":
+        destino = salida.with_name("DatosDestino.inc")
+        destino.write_text(cabecera + "\n" + _fichas_destino_cpp("FICHAS_IE2", d2) + "\n" + _curvas_cpp("CURVAS_IE2", d2)
+                           + "\n" + _fichas_destino_cpp("FICHAS_IE3", d3) + "\n" + _curvas_cpp("CURVAS_IE3", d3),
+                           encoding="utf-8", newline="\n")
+        print(f"datos de destino: {len(d2.indice_de)} fichas IE2, {len(d3.indice_de)} IE3; escrito: {destino}")
     return 0
 
 

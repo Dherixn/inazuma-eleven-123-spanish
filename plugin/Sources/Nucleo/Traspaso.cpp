@@ -26,6 +26,11 @@ namespace Definitiva {
 
     namespace {
 
+        struct Tecnica {
+            uint16_t id;
+            uint8_t nivel;
+        };
+
         bool OpcionesCompletas(const Opciones &op) {
             if (op.modo == Modo::SoloFichajes && op.nivelFichaje < 0)
                 return false;
@@ -33,44 +38,52 @@ namespace Definitiva {
             return !necesitaExp || op.expDeNivel;
         }
 
-        void NivelYExp(const JugadorPartida &j, uint16_t idDestino, const Opciones &op, uint8_t *nivel, uint32_t *exp) {
-            *nivel = j.nivel;
-            *exp = j.exp;
-            if (op.modo == Modo::Equilibrada && op.nivelTope >= 0 && j.nivel > op.nivelTope) {
-                *nivel = static_cast<uint8_t>(op.nivelTope);
-                *exp = op.expDeNivel(idDestino, *nivel, op.contexto);
-            } else if (op.modo == Modo::SoloFichajes) {
+        void NivelYExp(const JugadorPartida &j, uint16_t numeroDestino, const Opciones &op, uint8_t *nivel,
+                       uint32_t *exp) {
+            if (op.modo == Modo::Completa)
+                *nivel = j.nivel;
+            else if (op.modo == Modo::Equilibrada)
+                *nivel = (op.nivelTope >= 0 && j.nivel > op.nivelTope) ? static_cast<uint8_t>(op.nivelTope) : j.nivel;
+            else
                 *nivel = static_cast<uint8_t>(op.nivelFichaje);
-                *exp = op.expDeNivel(idDestino, *nivel, op.contexto);
-            }
+            *exp = op.expDeNivel ? op.expDeNivel(numeroDestino, *nivel, op.contexto) : j.exp;
         }
 
-        // El jugador ya estaba: más EXP gana, y sus huecos de técnica vacíos se rellenan.
-        JugadorPartida Fundir(JugadorPartida actual, const JugadorPartida &nuevo) {
-            for (uint32_t k = 0; k < NUM_TECNICAS; ++k) {
-                uint16_t tec = nuevo.tecnicas[k];
-                if (!tec)
+        // Las aprendidas en el juego nuevo (nivel de técnica 0) y después las que traía.
+        std::vector<Tecnica> Heredadas(const Opciones &op, uint16_t numeroDestino, uint8_t nivel,
+                                       const JugadorPartida &j) {
+            std::vector<Tecnica> salida;
+            if (op.aprendidas) {
+                uint16_t tecs[4] = {};
+                int n = op.aprendidas(numeroDestino, nivel, tecs, op.contexto);
+                for (int k = 0; k < n && k < 4; ++k)
+                    salida.push_back({tecs[k], 0});
+            }
+            for (uint32_t k = 0; k < NUM_TECNICAS; ++k)
+                salida.push_back({j.tecnicas[k], j.nivelesTecnica[k]});
+            return salida;
+        }
+
+        // Huecos libres; si ya la sabe, se queda el nivel de técnica mayor.
+        void Anadir(uint16_t tecnicas[NUM_TECNICAS], uint8_t niveles[NUM_TECNICAS], const std::vector<Tecnica> &nuevas) {
+            for (const Tecnica &t : nuevas) {
+                if (!t.id)
                     continue;
                 int esta = -1, libre = -1;
                 for (uint32_t m = 0; m < NUM_TECNICAS; ++m) {
-                    if (actual.tecnicas[m] == tec && esta < 0)
+                    if (tecnicas[m] == t.id && esta < 0)
                         esta = m;
-                    if (actual.tecnicas[m] == 0 && libre < 0)
+                    if (tecnicas[m] == 0 && libre < 0)
                         libre = m;
                 }
                 if (esta >= 0) {
-                    if (nuevo.nivelesTecnica[k] > actual.nivelesTecnica[esta])
-                        actual.nivelesTecnica[esta] = nuevo.nivelesTecnica[k];
+                    if (t.nivel > niveles[esta])
+                        niveles[esta] = t.nivel;
                 } else if (libre >= 0) {
-                    actual.tecnicas[libre] = tec;
-                    actual.nivelesTecnica[libre] = nuevo.nivelesTecnica[k];
+                    tecnicas[libre] = t.id;
+                    niveles[libre] = t.nivel;
                 }
             }
-            if (nuevo.exp > actual.exp) {
-                actual.exp = nuevo.exp;
-                actual.nivel = nuevo.nivel;
-            }
-            return actual;
         }
 
     }
@@ -81,55 +94,62 @@ namespace Definitiva {
             informe.error = Error::OpcionesIncompletas;
             return informe;
         }
+        auto clave = [&op](uint16_t numero) -> uint32_t { return op.clave ? op.clave(numero, op.contexto) : numero; };
         const bool mismoFormato = origen.Formato()->jugadorPaso == destino.Formato()->jugadorPaso;
-        std::map<uint16_t, uint32_t> posicion;
+        std::map<uint32_t, uint32_t> posicion;
         for (uint32_t k = 0; k < destino.NumJugadores(); ++k)
-            posicion[destino.Jugador(k).id] = k;  // como el dict de Python: gana la última
+            posicion[clave(destino.Jugador(k).id)] = k;  // como el dict de Python: gana la última
         const bool hayPlantilla = destino.NumJugadores() > 0;
         const std::vector<uint8_t> plantilla = hayPlantilla ? destino.Jugador(0).crudo : std::vector<uint8_t>();
 
         for (uint32_t i = 0; i < origen.NumJugadores(); ++i) {
             JugadorPartida j = origen.Jugador(i);
-            uint16_t idDestino;
-            if (!mapa.Buscar(j.id, &idDestino)) {
+            uint16_t numeroDestino;
+            if (!mapa.Buscar(j.id, &numeroDestino)) {
                 informe.sinPareja.push_back(j.id);
                 continue;
             }
             uint8_t nivel;
             uint32_t exp;
-            NivelYExp(j, idDestino, op, &nivel, &exp);
-
-            auto existente = posicion.find(idDestino);
+            auto existente = posicion.find(clave(numeroDestino));
             if (existente != posicion.end()) {
-                JugadorPartida nuevo = j;
-                nuevo.id = idDestino;
-                nuevo.nivel = nivel;
-                nuevo.exp = exp;
-                destino.PonerJugador(existente->second, Fundir(destino.Jugador(existente->second), nuevo));
-                informe.mejorados.push_back({j.id, idDestino});
+                // Se mejora la ficha que ya usa el juego (su número), no la que dice la tabla.
+                JugadorPartida actual = destino.Jugador(existente->second);
+                NivelYExp(j, actual.id, op, &nivel, &exp);
+                uint8_t final = nivel > actual.nivel ? nivel : actual.nivel;
+                Anadir(actual.tecnicas, actual.nivelesTecnica, Heredadas(op, actual.id, final, j));
+                if (nivel > actual.nivel || (nivel == actual.nivel && exp > actual.exp)) {
+                    actual.nivel = nivel;
+                    actual.exp = exp;
+                }
+                destino.PonerJugador(existente->second, actual);
+                informe.mejorados.push_back({j.id, numeroDestino});
                 continue;
             }
+            NivelYExp(j, numeroDestino, op, &nivel, &exp);
             if (destino.NumJugadores() >= destino.Formato()->maxJugadores) {
                 informe.sinSitio.push_back(j.id);
                 continue;
             }
-            JugadorPartida ficha = j;
-            if (!mismoFormato) {
-                if (!hayPlantilla) {
-                    // Destino vacío y formatos distintos: los campos sin interpretar no se inventan.
-                    informe.sinPlantilla.push_back(j.id);
-                    continue;
-                }
+            JugadorPartida ficha;
+            if (mismoFormato) {
+                ficha.crudo = j.crudo;
+            } else if (hayPlantilla) {
+                // Formatos distintos: los campos sin interpretar salen de una ficha del juego de destino.
                 ficha.crudo = plantilla;
                 informe.conPlantilla.push_back(j.id);
+            } else {
+                informe.sinPlantilla.push_back(j.id);
+                continue;
             }
-            ficha.id = idDestino;
+            ficha.id = numeroDestino;
             ficha.nivel = nivel;
             ficha.exp = exp;
+            Anadir(ficha.tecnicas, ficha.nivelesTecnica, Heredadas(op, numeroDestino, nivel, j));
             uint32_t indice;
             destino.AnadirJugador(ficha, &indice);
-            posicion.emplace(idDestino, indice);
-            informe.traspasados.push_back({j.id, idDestino});
+            posicion.emplace(clave(numeroDestino), indice);
+            informe.traspasados.push_back({j.id, numeroDestino});
         }
         return informe;
     }
