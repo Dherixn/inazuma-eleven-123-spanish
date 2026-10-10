@@ -3,6 +3,9 @@
 #include <string>
 #include <vector>
 
+#include <map>
+
+#include "Nucleo/NombreSjis.hpp"
 #include "Nucleo/Texto.hpp"
 #include "Nucleo/DatosDestino.hpp"
 #include "Nucleo/Partida.hpp"
@@ -54,6 +57,171 @@ namespace Definitiva {
                 if (s == numero)
                     return true;
             return false;
+        }
+
+        // --- Fichaje libre: cualquier jugador del juego (también los que solo daban Wi-Fi o StreetPass) ---
+
+        struct Elegida {
+            const char *archivo;
+            const char *nombre;
+            const FormatoPartida *formato;
+            const char *tablas;
+            const PerfilJuego *perfil;
+            bool esIE3;
+            u32 espacio;
+        };
+
+        const char *POSICION[] = {"?", "?", "PR", "?", "DF", "?", "MD", "?", "DL"};
+
+        // Partida y espacio (el IE1 tiene tres) donde fichar; false si no hay o se cancela.
+        bool ElegirPartida(Elegida &e, std::vector<u8> &datos) {
+            const Elegida CANDIDATAS[] = {
+                {"/ina1_save.dat", "Inazuma Eleven", &FORMATO_IE1, "inazuma1", &PERFIL_IE1, false, 0},
+                {"/ina2F_save.dat", "Tormenta de Fuego", &FORMATO_IE2, "inazuma2", &PERFIL_IE2, false, 0},
+                {"/ina2B_save.dat", "Ventisca Eterna", &FORMATO_IE2, "inazuma2", &PERFIL_IE2, false, 0},
+                {"/ina3S_save.dat", "Rayo Celeste", &FORMATO_IE3, "inazuma3", &PERFIL_IE3, true, 0},
+                {"/ina3B_save.dat", "Fuego Explosivo", &FORMATO_IE3, "inazuma3", &PERFIL_IE3, true, 0},
+                {"/ina3O_save.dat", "La amenaza del Ogro", &FORMATO_IE3, "inazuma3_ogre", &PERFIL_IE3, true, 0},
+            };
+            std::vector<Elegida> hay;
+            std::vector<std::string> nombres;
+            for (const Elegida &c : CANDIDATAS) {
+                std::vector<u8> d;
+                if (!LeerPartida(c.archivo, d))
+                    continue;
+                for (u32 k = 0; k < c.formato->numEspacios; ++k) {
+                    Partida p;
+                    if (!p.Cargar(d, c.formato, k) || !p.Ocupado() || p.Validar() != Error::Ninguno)
+                        continue;
+                    Elegida x = c;
+                    x.espacio = k;
+                    hay.push_back(x);
+                    nombres.push_back(c.formato->numEspacios > 1 ? Utils::Format("%s (espacio %lu)", c.nombre,
+                                                                                 static_cast<unsigned long>(k + 1))
+                                                                  : std::string(c.nombre));
+                }
+            }
+            if (hay.empty()) {
+                Aviso("No hay ninguna partida guardada todavía.");
+                return false;
+            }
+            Keyboard kb("¿En qué partida?", nombres);
+            int r = kb.Open();
+            if (r < 0)
+                return false;
+            e = hay[static_cast<size_t>(r)];
+            return LeerPartida(e.archivo, datos);
+        }
+
+        void FichajeLibre(MenuEntry *) {
+            if (MessageBox("Fichaje libre",
+                           Ajustar("Es una ayuda: deja fichar a cualquier jugador del juego, también los que solo se "
+                                   "conseguían por Wi-Fi o StreetPass, y hace el juego más fácil. ¿Seguir?"),
+                           DialogType::DialogYesNo)() == false)
+                return;
+            Elegida e;
+            std::vector<u8> datos;
+            if (!ElegirPartida(e, datos))
+                return;
+            const JuegoDatos *t = TablasDe(e.tablas, *e.perfil);
+            // Los nombres del IE1 y el IE2 llevan glifos de dos letras de la traducción: se enseña el del mismo
+            // personaje (misma cara) en el IE3, que va en letras normales.
+            const JuegoDatos *ie3 = e.esIE3 ? t : TablasDe("inazuma3", PERFIL_IE3);
+            if (!t || !ie3) {
+                Aviso("No se han podido leer las tablas del juego (archive.fa).");
+                return;
+            }
+            std::map<uint16_t, size_t> caraIE3;
+            for (size_t i = 0; i < ie3->Fichas(); ++i)
+                if (ie3->Jugable(i) && !caraIE3.count(ie3->Cara(i)))
+                    caraIE3[ie3->Cara(i)] = i;
+            auto nombre = [&](size_t i) {
+                if (!e.esIE3) {
+                    auto it = caraIE3.find(t->Cara(i));
+                    if (it != caraIE3.end())
+                        return DecodificarNombre(ie3->NombreCrudo(it->second), ie3->AnchoNombre());
+                }
+                return DecodificarNombre(t->NombreCrudo(i), t->AnchoNombre());
+            };
+
+            Keyboard teclado(Ajustar("Escribe parte del nombre (por ejemplo, «Axel» o «Byron»):"));
+            std::string buscado;
+            if (teclado.Open(buscado) < 0 || buscado.empty())
+                return;
+            std::string clave = NormalizarBusqueda(buscado);
+            std::vector<size_t> fichas;
+            std::vector<std::string> opciones;
+            std::map<uint32_t, bool> vistos;  // una vez por personaje
+            for (size_t i = 0; i < t->Fichas() && opciones.size() < 30; ++i) {
+                if (!t->Jugable(i) || t->Ficha(t->Numero(i)) != static_cast<int>(i))
+                    continue;
+                std::string n = nombre(i);
+                if (NormalizarBusqueda(n).find(clave) == std::string::npos || vistos[t->Clave(t->Numero(i))])
+                    continue;
+                vistos[t->Clave(t->Numero(i))] = true;
+                fichas.push_back(i);
+                opciones.push_back(Utils::Format("%s (%s)", n.c_str(), POSICION[t->Posicion(i) < 9 ? t->Posicion(i) : 0]));
+            }
+            if (opciones.empty()) {
+                Aviso("No hay ningún jugador con ese nombre en este juego.");
+                return;
+            }
+            Keyboard lista(opciones.size() == 30 ? "Hay más: afina la búsqueda. ¿A quién fichas?" : "¿A quién fichas?",
+                           opciones);
+            int r = lista.Open();
+            if (r < 0)
+                return;
+            size_t ficha = fichas[static_cast<size_t>(r)];
+
+            Partida partida;
+            partida.Cargar(datos, e.formato, e.espacio);
+            u32 suma = 0;
+            u8 mejor = 1;
+            for (u32 k = 0; k < partida.NumJugadores(); ++k) {
+                u8 n = partida.Jugador(k).nivel;
+                suma += n;
+                mejor = n > mejor ? n : mejor;
+            }
+            u8 media = static_cast<u8>(partida.NumJugadores() ? (suma + partida.NumJugadores() / 2) / partida.NumJugadores() : 1);
+            if (media < 1)
+                media = 1;
+            Keyboard nivelLista("¿Con qué nivel llega?", {Utils::Format("La media de tu equipo (%u)", media),
+                                                         Utils::Format("El de tu mejor jugador (%u)", mejor),
+                                                         "Otro..."});
+            int eleccion = nivelLista.Open();
+            if (eleccion < 0)
+                return;
+            u8 nivel = eleccion == 0 ? media : mejor;
+            if (eleccion == 2) {
+                Keyboard nivelTeclado("Nivel (1-99):");
+                nivelTeclado.IsHexadecimal(false);
+                if (nivelTeclado.Open(nivel, media) < 0 || nivel < 1 || nivel > 99)
+                    return;
+            }
+
+            Opciones op;
+            t->Preparar(op);
+            std::string copia;
+            if (CopiarPartidasASD(gCarpetaCopias, copia) <= 0) {
+                Aviso("No se ha podido hacer la copia de seguridad en la SD. No se ha tocado nada.");
+                return;
+            }
+            Fichaje f = Fichar(partida, t->Numero(ficha), nivel, op);
+            if (f == Fichaje::YaEsta) {
+                Aviso("Ya está en tu equipo.");
+                return;
+            }
+            if (f != Fichaje::Hecho) {
+                Aviso(f == Fichaje::SinSitio ? "No cabe nadie más en el equipo." : "No se ha podido fichar.");
+                return;
+            }
+            if (partida.Sellar() != Error::Ninguno || !EscribirPartida(e.archivo, partida.Datos())) {
+                Aviso(Utils::Format("No se ha podido guardar. Tu partida sigue como estaba (copia en %s).", copia.c_str()));
+                return;
+            }
+            Aviso(Utils::Format("%s se une al equipo con nivel %u.\nCopia de seguridad en la SD: %s\n\n"
+                                "Para verlo, sal al título de %s SIN GUARDAR y pulsa Continuar.",
+                                nombre(ficha).c_str(), nivel, copia.c_str(), e.nombre));
         }
 
         void FicharAiden(MenuEntry *) {
@@ -164,6 +332,10 @@ namespace Definitiva {
                                   "IE3 y Ogro: si Shawn está en el equipo.\n"
                                   "Si lo fichas en el IE2, pasa al IE3 con la\n"
                                   "Continuidad.");
+        *carpeta += new MenuEntry("Fichaje libre (ayuda)", nullptr, FichajeLibre,
+                                  Ajustar("Busca por nombre a cualquier jugador del juego y fíchalo, también los que "
+                                          "solo se conseguían por Wi-Fi o StreetPass. Opcional: hace el juego más "
+                                          "fácil."));
         return carpeta;
     }
 

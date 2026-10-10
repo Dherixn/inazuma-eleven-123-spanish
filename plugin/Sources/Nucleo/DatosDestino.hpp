@@ -42,6 +42,9 @@ namespace Definitiva {
         uint8_t Posicion(size_t i) const { return posiciones_[i]; }
         bool Jugable(size_t i) const { return jugables_[i]; }
         uint16_t Numero(size_t i) const { return numeros_[i]; }
+        // Campo del nombre completo de la ficha, tal cual (Shift-JIS de la traducción; ver NombreSjis).
+        const uint8_t *NombreCrudo(size_t i) const { return &nombres_[i * anchoNombre_]; }
+        size_t AnchoNombre() const { return anchoNombre_; }
 
         // Por número de jugador (el de la partida). -1 si no tiene ficha.
         int Ficha(uint16_t numero) const;
@@ -62,6 +65,8 @@ namespace Definitiva {
         std::vector<uint32_t> claves_;
         std::vector<uint16_t> tecnicas_;  // 4 por ficha
         std::vector<uint8_t> niveles_;    // 4 por ficha
+        std::vector<uint8_t> nombres_;    // anchoNombre_ por ficha
+        size_t anchoNombre_ = 0;
         std::vector<std::pair<uint16_t, uint32_t>> indice_;  // (número, primera ficha), ordenado
     };
 

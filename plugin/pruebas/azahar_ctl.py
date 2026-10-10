@@ -95,6 +95,7 @@ def pulsar(boton: str, ms: int = 120) -> None:
 
 
 WM_MOUSEMOVE, WM_LBUTTONDOWN, WM_LBUTTONUP, MK_LBUTTON = 0x0200, 0x0201, 0x0202, 0x0001
+AJUSTE_X = int(os.environ.get("AZAHAR_AJUSTE_X", "24"))
 
 
 def _zonas_de_pintado(hwnd: int) -> list[int]:
@@ -126,7 +127,9 @@ def toque(x: int, y: int, ms: int = 120) -> None:
     user32.GetClientRect(zonas[0], ctypes.byref(r))
     ancho, alto = r.right - r.left, r.bottom - r.top
     escala = min(ancho / 400, alto / 480)
-    x0 = (ancho - 320 * escala) / 2
+    # Calibrado en esta ventana (1280 × 480 a escala 1): Azahar pone la pantalla de abajo 24 px más a la
+    # izquierda de lo que daría centrarla (comprobado con el teclado de CTRPF, tecla a tecla).
+    x0 = (ancho - 320 * escala) / 2 - AJUSTE_X * escala
     y0 = (alto - 480 * escala) / 2 + 240 * escala
     px, py = int(x0 + x * escala), int(y0 + y * escala)
     punto = (py << 16) | (px & 0xFFFF)

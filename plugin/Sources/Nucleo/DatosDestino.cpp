@@ -33,7 +33,7 @@ namespace Definitiva {
             return s;
         }
 
-        uint8_t Posicion(uint8_t byte) {
+        uint8_t PosicionDeByte(uint8_t byte) {
             uint8_t n = byte >> 4;
             return (n == 2 || n == 4 || n == 6 || n == 8) ? n : 0;
         }
@@ -66,12 +66,14 @@ namespace Definitiva {
         claves_.resize(total);
         tecnicas_.assign(total * 4, 0);
         niveles_.assign(total * 4, 0);
+        anchoNombre_ = p.anchoNombre;
+        nombres_.assign(total * anchoNombre_, 0);
         std::map<uint16_t, uint32_t> primera;
         for (size_t i = 0; i < total; ++i) {
             const uint8_t *b = unitbase.data() + i * p.basePaso;
             curva_[i] = b[p.offIdentidad];
             caras_[i] = U16(b + p.offCara);
-            posiciones_[i] = Posicion(b[p.offPosicion]);
+            posiciones_[i] = PosicionDeByte(b[p.offPosicion]);
             numeros_[i] = U16(&unitno[i * 2]);
             primera.emplace(numeros_[i], static_cast<uint32_t>(i));
 
@@ -80,6 +82,7 @@ namespace Definitiva {
             std::vector<uint8_t> nombre;
             for (uint32_t k = 0; k < p.anchoNombre && b[p.offNombre + k]; ++k)
                 nombre.push_back(b[p.offNombre + k]);
+            std::copy(b + p.offNombre, b + p.offNombre + p.anchoNombre, nombres_.begin() + i * anchoNombre_);
             std::vector<uint8_t> limpio;
             for (size_t k = 0; k < nombre.size(); ++k) {
                 if (k + 1 < nombre.size() && nombre[k] == 0x81 && nombre[k + 1] == 0x40) {
