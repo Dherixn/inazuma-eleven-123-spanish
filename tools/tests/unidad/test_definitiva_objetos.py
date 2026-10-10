@@ -50,3 +50,16 @@ def test_si_la_traduccion_ya_lo_cambio_no_se_toca():
 def test_un_nombre_que_no_cabe_es_un_error():
     with pytest.raises(ValueError):
         objetos.codificar_nombre("Un nombre larguísimo que no cabe")
+
+
+def test_solo_nombre_y_solo_en_su_juego():
+    dat, texto = _tablas({87: "さらなるしょうこ", 78: "体育館の鍵"})
+    # En el IE3 el 78 no se mira (es del Ogro); el 87 cambia de nombre y conserva su descripción.
+    nuevo_dat, nuevo_texto, saltados = objetos.traducir(dat, texto, _codificar, "inazuma3")
+    assert not any(s.startswith("objeto 78:") for s in saltados)
+    pruebas = _registro(nuevo_dat, 87)
+    assert pruebas[:12] == b"M\x83\x9fs pruebas"[:12] or pruebas[:4] == b"M\x83\x9f"  # «Más» con su portador
+    assert struct.unpack_from("<H", pruebas, objetos.OFF_DESCRIPCION)[0] == 3 and nuevo_texto[:len(texto)] == texto
+    assert _registro(nuevo_dat, 78) == _registro(dat, 78)
+    ogro_dat, _, _ = objetos.traducir(dat, texto, _codificar, "inazuma3_ogre")
+    assert _registro(ogro_dat, 78)[:18] == b"Llave del gimnasio"

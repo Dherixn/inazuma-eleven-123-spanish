@@ -57,9 +57,10 @@ def capa_definitiva(arc: FaArchive, codificar: Callable[[str], bytes] | None = N
         resumen.append(f"{juego}: Aiden Froste en la ficha {ficha}, número {numero}")
     for juego in objetos.JUEGOS:
         base = f"{juego}/data_iz/logic/"
-        dat, texto, saltados = objetos.traducir(arc.read(base + "item.dat"), arc.read(base + "item.STR"), codificar)
+        dat, texto, saltados = objetos.traducir(arc.read(base + "item.dat"), arc.read(base + "item.STR"), codificar, juego)
         cambios[base + "item.dat"], cambios[base + "item.STR"] = dat, texto
-        resumen.append(f"{juego}: {len(objetos.CAMBIOS) - len(saltados)} objetos de StreetPass y Wi-Fi en español")
+        hechos = sum(1 for e in objetos.CAMBIOS.values() if len(e) < 4 or juego in e[3]) - len(saltados)
+        resumen.append(f"{juego}: {hechos} objetos que seguían en japonés, en español")
         resumen += [f"  aviso: {s}" for s in saltados]
     rpgtitle, saltados = titulos.corregir(arc.read(titulos.RUTA))
     cambios[titulos.RUTA] = rpgtitle
