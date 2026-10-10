@@ -25,8 +25,16 @@ esto copia datos del juego al repositorio: son posiciones, tamaños y comportami
 - **Grupo** (los 16 que juegan; el resto es la reserva, página 2 de Equipo): en el IE2, una lista de 16
   números (u16) 0x40 B detrás de los 100 registros (0x3E68); el byte 0x56 de la información es su resumen.
   Al guardar, el juego reordena los registros (grupo primero). En el IE2 y el IE3, el menú Equipo no deja
-  pasar a nadie de la reserva al grupo (al menos al principio). En el IE3 el grupo no está en +0x8C tras los
-  registros (allí va otra cosa), ni es el byte 0x56, ni el dorsal y el sitio de la ficha: sin localizar.
+  pasar a nadie de la reserva al grupo (al menos al principio).
+- Grupo del IE3: lista de 16 números 0x5E B detrás de los registros (0x3C3E), resumen en 0x56. Con la lista
+  vacía (tras el prólogo), el grupo son los primeros registros. Al entrar alguien, el juego le da dorsal y deja
+  el sitio a 0. En el prólogo el menú pinta como mucho a 7 (los primeros de la lista); el resto sale en la
+  reserva. Se localizó al revés: la lista sí está en memoria; metiendo a alguien ahí y guardando desde el
+  juego, el archivo la recoge.
+- El grupo del IE3 solo pinta fichas nativas de jugador con recursos de cara: una ficha nueva o reciclada (aun
+  copiando la de Shawn entera) sale en la reserva sin icono y no en el grupo, y el retrato de Atsuya (0x51B)
+  no existe en el IE3. Por eso Aiden toma allí la ficha 2337 (Shawn en modo delantero), que la historia no
+  ficha.
 - Prólogo del IE3: juegas con Paolo Bianchi (número 3170) y luego la historia lo quita y deja a Mark solo en
   el grupo. Si se ha traspasado antes, los traspasados siguen (Mark con su nivel, el resto en la reserva).
 

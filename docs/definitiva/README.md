@@ -16,14 +16,16 @@ del IE1 al último del Ogro:
 |---|---|
 | Continuidad | Traer el equipo del IE1 a Tormenta de Fuego o Ventisca, del IE2 a Rayo Celeste, Fuego Explosivo u Ogro y del IE3 a Ogro. Modos: completa (cada uno con su nivel), equilibrada (nivel máximo) y solo fichajes (todos al mismo nivel). La EXP se recalcula con la curva del juego nuevo y las técnicas con su tabla de aprendizaje. Copia de seguridad en la SD antes de escribir. Texto «Capítulo siguiente» que enlaza las historias. |
 | Continuidad → Crónica de la leyenda | Las partidas de los tres juegos vistas como temporadas: episodio, nivel del equipo, jugadores, horas y total. |
-| Fichajes especiales | Aiden Froste: en el IE2, cuando Shawn aprende «Aullido de lobo» (cuando deja de esconderse tras su hermano); en IE3 y Ogro, con Shawn en el equipo. Llega con el nivel de Shawn y pasa al IE3 con la Continuidad. «Fichaje libre» (ayuda, con aviso): busca por nombre a cualquier jugador jugable, también los de Wi-Fi o StreetPass, y lo ficha con el nivel que elijas. En el IE2, si cabe, el fichado entra en el grupo (página 1 de Equipo). |
+| Fichajes especiales | Aiden Froste: en el IE2, cuando Shawn aprende «Aullido de lobo» (cuando deja de esconderse tras su hermano); en IE3 y Ogro, con Shawn en el equipo. Llega con el nivel de Shawn y pasa al IE3 con la Continuidad. «Fichaje libre» (ayuda, con aviso): busca por nombre a cualquier jugador jugable, también los de Wi-Fi o StreetPass, y lo ficha con el nivel que elijas. Si cabe, el fichado entra en el grupo (página 1 de Equipo). «Grupo y reserva»: pasa a cualquiera de la reserva al grupo (el menú del juego no deja al principio del IE2 y del IE3). |
 | Ayudas | Encuentros (normal, menos, muy pocos, ninguno, más), velocidad al andar, supertécnicas del rival (dificultad), precio de venta, fuera de juego, versión (exclusivos de la otra), PE y PT siempre llenos (también dentro del partido), experiencia x2/x3. De fábrica, todo como el original; se guardan en la SD. «Memoria de técnicas» (activada de fábrica: no cambia el juego) apunta lo que sabe cada jugador, y «Recuperar técnicas perdidas» se lo devuelve a quien la historia se lo quite (#13). |
 | Partidas | Ver los archivos de partida y copiarlos a la SD. |
 | (secreto) | Dicen que el abuelo Daisuke dejó un cuaderno... |
 
 Capa de datos (archivos de `archive.fa`, por LayeredFS):
 
-- Aiden Froste jugable en IE2, IE3 y Ogro, con su retrato, su descripción y sus técnicas.
+- Aiden Froste jugable en IE2, IE3 y Ogro, con su descripción y sus técnicas. En el IE2 tiene el retrato de
+  Atsuya; en IE3 y Ogro ocupa la ficha 2337 (Shawn en modo delantero, con su cara: el retrato de Atsuya no existe
+  allí) y juega en Nuevo Alpino y Los Impostores.
 - Títulos de equipo del IE2 que no cabían en su caja (#14).
 
 ## Instalar
@@ -85,8 +87,8 @@ en `/luma/titles/00040000000BB800/` y el plugin en `/luma/plugins/00040000000BB8
 ## Pendiente
 
 - Partida larga de prueba: pasar por los tres juegos de principio a fin en la AYN Thor.
-- Grupo del IE3 sin localizar: los traspasados y fichados van a la reserva y la historia los convoca.
-  Comprobar en la convocatoria de Inazuma Japón que los convocados que ya estaban no se duplican.
+- Convocatoria de Inazuma Japón con traspasados: el traspaso ya usa las fichas que ficha la historia, falta
+  verlo en una partida.
 - Objetos y condiciones del contenido de Wi-Fi o StreetPass (#8, #10); los jugadores ya se pueden fichar.
 - Revisar con el equipo de la traducción los títulos acortados (#14).
 
