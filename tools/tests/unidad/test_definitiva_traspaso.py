@@ -89,12 +89,27 @@ def test_traspaso_completo_ie2_a_ie3_con_tabla_de_equivalencias():
     assert len(shawn.crudo) == 0x6C
 
 
-def test_traspaso_ie1_a_ie2_conserva_numeracion_y_ficha_entera():
+def test_traspaso_ie1_a_ie2_conserva_numeracion_y_usa_plantilla_del_ie2():
+    # El IE1 de la recopilación tiene fichas de 0x60 B y el IE2 de 0x70: los campos sin interpretar
+    # salen de una ficha del IE2.
     ie1 = _partida("ie1.123", [(11, 30, 9000, [0x92])])
     ie2 = _partida("ie2.123", [(1, 10, 500, [])])
     informe = tr.traspasar(ie1, ie2, None, tr.Opciones(modo=tr.COMPLETA))
-    assert informe.traspasados == [(11, 11)] and not informe.con_plantilla
-    assert ie2.jugadores()[1].crudo[0x10:0x12] == b"\xAA\xBB"
+    assert informe.traspasados == [(11, 11)] and informe.con_plantilla == [11]
+    assert len(ie2.jugadores()[1].crudo) == 0x70
+
+
+def test_espacios_de_la_recopilacion():
+    formato = pt.FORMATOS["ie2.123"]
+    datos = bytearray(formato.archivo_largo)
+    datos[0x04:0x13] = b"INAZUMA_ELEVEN2"
+    struct.pack_into("<I", datos, formato.espacio_largo * 2 + pt.OFF_MARCA, pt.MARCA)
+    p = pt.Partida(bytes(datos), formato, espacio=2)
+    assert p.ocupado and not pt.Partida(bytes(datos), formato, espacio=0).ocupado
+    p.sellar()
+    assert p.sumas_correctas()["datos"] and p.sumas_correctas()["info"]
+    with pytest.raises(ValueError):
+        pt.Partida(bytes(datos), formato, espacio=3)
 
 
 def test_modo_equilibrado_topa_nivel_y_recalcula_exp():

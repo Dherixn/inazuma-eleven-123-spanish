@@ -109,7 +109,7 @@ namespace Definitiva {
                 informe.mejorados.push_back({j.id, idDestino});
                 continue;
             }
-            if (destino.NumJugadores() >= MAX_JUGADORES) {
+            if (destino.NumJugadores() >= destino.Formato()->maxJugadores) {
                 informe.sinSitio.push_back(j.id);
                 continue;
             }

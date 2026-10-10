@@ -21,7 +21,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
-from ie123kit.definitiva.partida import MAX_JUGADORES, JugadorPartida, Partida
+from ie123kit.definitiva.partida import JugadorPartida, Partida
 
 COMPLETA = "completa"
 EQUILIBRADA = "equilibrada"
@@ -122,7 +122,7 @@ def traspasar(origen: Partida, destino: Partida, mapa_ids: Mapping[int, int] | N
             destino.poner_jugador(k, _fundir(destino.jugadores()[k], nuevo))
             informe.mejorados.append((j.id, id_destino))
             continue
-        if destino.num_jugadores >= MAX_JUGADORES:
+        if destino.num_jugadores >= destino.formato.max_jugadores:
             informe.sin_sitio.append(j.id)
             continue
         if mismo_formato:

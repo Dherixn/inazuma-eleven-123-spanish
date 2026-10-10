@@ -4,10 +4,10 @@
 
 namespace Definitiva {
 
-    // IE1 sin verificar: valores comentados en el editor de la comunidad para el IE1 japonés.
-    const FormatoPartida FORMATO_IE1 = {"ie1.123", 0x54C0, 0x1268, 0x70, false};
-    const FormatoPartida FORMATO_IE2 = {"ie2.123", 0x7DC0, 0x1268, 0x70, true};
-    const FormatoPartida FORMATO_IE3 = {"ie3.123", 0x5940, 0x11B0, 0x6C, true};
+    // IE1: 32 fichas de 0x60 B desde 0x79C (medido en Azahar); solo se lee.
+    const FormatoPartida FORMATO_IE1 = {"ie1.123", 0x54C0, 0x79C, 0x60, false, 32};
+    const FormatoPartida FORMATO_IE2 = {"ie2.123", 0x7DC0, 0x1268, 0x70, true, MAX_JUGADORES};
+    const FormatoPartida FORMATO_IE3 = {"ie3.123", 0x5940, 0x11B0, 0x6C, true, MAX_JUGADORES};
 
     const char *DescribirError(Error e) {
         switch (e) {
@@ -19,7 +19,7 @@ namespace Definitiva {
             case Error::SumaDatos: return "suma de control de los datos incorrecta";
             case Error::SinMarca: return "falta la marca de partida";
             case Error::IndiceFueraDeRango: return "jugador fuera de rango";
-            case Error::PlantillaLlena: return "la plantilla ya tiene 100 jugadores";
+            case Error::PlantillaLlena: return "la plantilla está llena";
             case Error::TamanoFicha: return "ficha de jugador de otro tamaño";
             case Error::OpcionesIncompletas: return "al modo de herencia le faltan datos";
         }
@@ -78,13 +78,19 @@ namespace Definitiva {
         return reg;
     }
 
-    bool Partida::Cargar(std::vector<uint8_t> datos, const FormatoPartida *formato) {
-        if (!formato || datos.size() < DATOS_INICIO + formato->datosLargo)
+    bool Partida::Cargar(std::vector<uint8_t> datos, const FormatoPartida *formato, uint32_t espacio) {
+        if (!formato || espacio >= NUM_ESPACIOS)
+            return false;
+        uint32_t base = espacio * formato->EspacioLargo();
+        if (datos.size() < base + DATOS_INICIO + formato->datosLargo)
             return false;
         datos_ = std::move(datos);
         formato_ = formato;
+        base_ = base;
         return true;
     }
+
+    bool Partida::Ocupado() const { return LeerU32(base_ + OFF_MARCA) == MARCA; }
 
     uint32_t Partida::LeerU32(uint32_t off) const { return U32(&datos_[off]); }
 
@@ -93,11 +99,11 @@ namespace Definitiva {
     Error Partida::Validar() const {
         if (Crc32(&datos_[0x04], 0x3C) != LeerU32(OFF_CRC_CABECERA))
             return Error::SumaCabecera;
-        if (Crc32(&datos_[INFO_INICIO], INFO_LARGO) != LeerU32(OFF_CRC_INFO))
+        if (Crc32(&datos_[base_ + INFO_INICIO], INFO_LARGO) != LeerU32(base_ + OFF_CRC_INFO))
             return Error::SumaInfo;
-        if (Crc32(&datos_[DATOS_INICIO], formato_->datosLargo) != LeerU32(OFF_CRC_DATOS))
+        if (Crc32(&datos_[base_ + DATOS_INICIO], formato_->datosLargo) != LeerU32(base_ + OFF_CRC_DATOS))
             return Error::SumaDatos;
-        if (LeerU32(OFF_MARCA) != MARCA)
+        if (!Ocupado())
             return Error::SinMarca;
         return Error::Ninguno;
     }
@@ -105,8 +111,8 @@ namespace Definitiva {
     Error Partida::Sellar() {
         if (!formato_->verificado)
             return Error::FormatoNoVerificado;
-        EscribirU32(OFF_CRC_DATOS, Crc32(&datos_[DATOS_INICIO], formato_->datosLargo));
-        EscribirU32(OFF_CRC_INFO, Crc32(&datos_[INFO_INICIO], INFO_LARGO));
+        EscribirU32(base_ + OFF_CRC_DATOS, Crc32(&datos_[base_ + DATOS_INICIO], formato_->datosLargo));
+        EscribirU32(base_ + OFF_CRC_INFO, Crc32(&datos_[base_ + INFO_INICIO], INFO_LARGO));
         return Error::Ninguno;
     }
 
@@ -130,12 +136,12 @@ namespace Definitiva {
 
     Error Partida::AnadirJugador(const JugadorPartida &j, uint32_t *indice) {
         uint32_t n = NumJugadores();
-        if (n >= MAX_JUGADORES)
+        if (n >= formato_->maxJugadores)
             return Error::PlantillaLlena;
         Error e = EscribirReg(n, j);
         if (e != Error::Ninguno)
             return e;
-        datos_[OFF_NUM_JUGADORES] = static_cast<uint8_t>(n + 1);
+        datos_[base_ + OFF_NUM_JUGADORES] = static_cast<uint8_t>(n + 1);
         if (indice)
             *indice = n;
         return Error::Ninguno;
