@@ -68,6 +68,8 @@ class FormatoPartida:
     tecnicas_u8: bool = False
     # Lista del grupo (u16 por número de jugador, hasta MAX_GRUPO) tras los registros; 0 = sin localizar.
     off_grupo: int = 0
+    # Al entrar en el grupo, la ficha recibe también su sitio en la formación (el IE3 lo deja a 0).
+    sitio_al_entrar: bool = True
     # Campos de la ficha con su sitio en el equipo que no se heredan al crear una (offset, valor): dorsal,
     # sitio, órdenes (capitán, lanzadores), los cuatro de cabecera y, en el IE3, el equipo (el prólogo es
     # de Paolo Bianchi, del Orfeo: 0x36). Sin esto, los fichados copiaban los del capitán.
@@ -91,9 +93,11 @@ FORMATOS = {
     "ie2.123": FormatoPartida("ie2.123", datos_largo=0x7DC0, jugadores_inicio=0x1268, jugador_paso=0x70, verificado=True,
                               off_grupo=0x1268 + MAX_JUGADORES * 0x70 + 0x40,
                               reinicio=((0x57, 0), (0x58, 0), (0x5B, 0x10), (0x5D, 0))),
-    # IE3: +0x4B es el equipo (1 en los naturales); el grupo aún no está localizado (los fichados van a la
-    # reserva y la historia los convoca, como a Mark tras el prólogo).
+    # IE3: +0x4B es el equipo (1 en los naturales). El grupo, 0x5E B detrás de los registros (localizado
+    # metiendo a alguien en la lista en memoria y guardando desde el juego); al entrar, el juego le da dorsal
+    # pero deja el sitio a 0.
     "ie3.123": FormatoPartida("ie3.123", datos_largo=0x5940, jugadores_inicio=0x11B0, jugador_paso=0x6C, verificado=True,
+                              off_grupo=0x11B0 + MAX_JUGADORES * 0x6C + 0x5E, sitio_al_entrar=False,
                               reinicio=((0x4B, 1), (0x57, 0), (0x58, 0), (0x5A, 0), (0x5B, 0x10))),
 }
 
@@ -249,6 +253,14 @@ class Partida:
         lista = self.grupo()
         if not lista:
             return False
+        if not any(lista) and self.datos[self.base + OFF_NUM_GRUPO]:
+            # Lista vacía con grupo (IE3 tras el prólogo): el grupo son los primeros registros. Se escriben
+            # antes de añadir para no sacar a nadie.
+            cuantos = min(self.datos[self.base + OFF_NUM_GRUPO], MAX_GRUPO, self.num_jugadores)
+            for k in range(cuantos):
+                n = struct.unpack_from("<H", self.datos, self._off_jugador(k) + 4)[0]
+                struct.pack_into("<H", self.datos, self.base + self.formato.off_grupo + 2 * k, n)
+            lista = self.grupo()
         o_jugador = self._off_jugador(indice)
         numero = struct.unpack_from("<H", self.datos, o_jugador + 4)[0]
         if numero in lista:
@@ -262,10 +274,11 @@ class Partida:
             if struct.unpack_from("<H", self.datos, o + 4)[0] in en_grupo:
                 dorsales.add(self.datos[o + OFF_DORSAL])
         dorsal = next(d for d in range(1, 256) if d not in dorsales)
-        miembros = len(en_grupo) + 1
+        miembros = sum(1 for n in lista if n) + 1  # casillas ocupadas, como el C++
         struct.pack_into("<H", self.datos, self.base + self.formato.off_grupo + 2 * lista.index(0), numero)
         self.datos[o_jugador + OFF_DORSAL] = dorsal
-        self.datos[o_jugador + OFF_SITIO] = miembros
+        if self.formato.sitio_al_entrar:
+            self.datos[o_jugador + OFF_SITIO] = miembros
         self.datos[self.base + OFF_NUM_GRUPO] = miembros
         return True
 

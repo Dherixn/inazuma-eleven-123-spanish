@@ -288,7 +288,11 @@ def test_traspaso_al_ie3_quita_al_fichado_el_equipo_y_las_ordenes_del_capitan():
     paolo = ie3._off_jugador(0)
     for off, v in ((0x4B, 0x36), (0x57, 10), (0x58, 1), (0x5A, 1), (0x5B, 0x11)):
         ie3.datos[paolo + off] = v
+    ie3.datos[ie3.base + pt.OFF_NUM_GRUPO] = 1  # Paolo en el grupo con la lista vacía, como tras el prólogo
     informe = tr.traspasar(ie2, ie3, {1: 1}, tr.Opciones(modo=tr.COMPLETA))
     reg = ie3.datos[ie3._off_jugador(1):ie3._off_jugador(1) + ie3.formato.jugador_paso]
-    assert [reg[o] for o in (0x4B, 0x57, 0x58, 0x5A, 0x5B)] == [1, 0, 0, 0, 0x10]
-    assert informe.al_grupo == []  # el grupo del IE3 aún no está localizado: a la reserva
+    # Sin el equipo ni las órdenes de Paolo; entra en el grupo detrás de él, con dorsal y sin sitio (el IE3
+    # lo deja a 0 al entrar).
+    assert [reg[o] for o in (0x4B, 0x57, 0x58, 0x5A, 0x5B)] == [1, 1, 0, 0, 0x10]
+    assert ie3.grupo()[:3] == [3170, 1, 0] and ie3.datos[ie3.base + pt.OFF_NUM_GRUPO] == 2
+    assert informe.al_grupo == [1]

@@ -11,11 +11,11 @@ namespace Definitiva {
         const Reinicio REINICIO_IE3[] = {{0x4B, 1}, {0x57, 0}, {0x58, 0}, {0x5A, 0}, {0x5B, 0x10}};
     }
 
-    const FormatoPartida FORMATO_IE1 = {"ie1.123", 0x54C0, 0x79C, 0x60, false, 32, 3, 0x3E, true, 0, nullptr, 0};
+    const FormatoPartida FORMATO_IE1 = {"ie1.123", 0x54C0, 0x79C, 0x60, false, 32, 3, 0x3E, true, 0, true, nullptr, 0};
     const FormatoPartida FORMATO_IE2 = {"ie2.123", 0x7DC0, 0x1268, 0x70, true, MAX_JUGADORES, 1, 0x4A, false,
-                                        0x1268 + MAX_JUGADORES * 0x70 + 0x40, REINICIO_IE2, 4};
+                                        0x1268 + MAX_JUGADORES * 0x70 + 0x40, true, REINICIO_IE2, 4};
     const FormatoPartida FORMATO_IE3 = {"ie3.123", 0x5940, 0x11B0, 0x6C, true, MAX_JUGADORES, 1, 0x4A, false,
-                                        0, REINICIO_IE3, 5};
+                                        0x11B0 + MAX_JUGADORES * 0x6C + 0x5E, false, REINICIO_IE3, 5};
 
     const char *DescribirError(Error e) {
         switch (e) {
@@ -156,6 +156,20 @@ namespace Definitiva {
         if (!formato_->offGrupo || indice >= NumJugadores())
             return false;
         const uint32_t lista = base_ + formato_->offGrupo;
+        bool vacia = true;
+        for (uint32_t k = 0; k < MAX_GRUPO && vacia; ++k)
+            vacia = U16(&datos_[lista + 2 * k]) == 0;
+        if (vacia && datos_[base_ + OFF_NUM_GRUPO]) {
+            // Lista vacía con grupo (IE3 tras el prólogo): el grupo son los primeros registros. Se escriben
+            // antes de añadir para no sacar a nadie.
+            uint32_t cuantos = datos_[base_ + OFF_NUM_GRUPO];
+            if (cuantos > MAX_GRUPO)
+                cuantos = MAX_GRUPO;
+            if (cuantos > NumJugadores())
+                cuantos = NumJugadores();
+            for (uint32_t k = 0; k < cuantos; ++k)
+                PonU16(&datos_[lista + 2 * k], U16(&datos_[OffJugador(k) + 4]));
+        }
         const uint32_t oJugador = OffJugador(indice);
         const uint16_t numero = U16(&datos_[oJugador + 4]);
         int hueco = -1;
@@ -187,7 +201,8 @@ namespace Definitiva {
         ++miembros;
         PonU16(&datos_[lista + 2 * static_cast<uint32_t>(hueco)], numero);
         datos_[oJugador + OFF_DORSAL] = static_cast<uint8_t>(dorsal);
-        datos_[oJugador + OFF_SITIO] = static_cast<uint8_t>(miembros);
+        if (formato_->sitioAlEntrar)
+            datos_[oJugador + OFF_SITIO] = static_cast<uint8_t>(miembros);
         datos_[base_ + OFF_NUM_GRUPO] = static_cast<uint8_t>(miembros);
         return true;
     }

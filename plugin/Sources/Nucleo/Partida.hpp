@@ -52,6 +52,8 @@ namespace Definitiva {
         bool tecnicasU8;
         // Lista del grupo (u16 por número de jugador, hasta MAX_GRUPO) tras los registros; 0 = sin localizar.
         uint32_t offGrupo;
+        // Al entrar en el grupo, la ficha recibe también su sitio en la formación (el IE3 lo deja a 0).
+        bool sitioAlEntrar;
         // Campos de la ficha con su sitio en el equipo que no se heredan al crear una (ver partida.py).
         const Reinicio *reinicio;
         uint32_t numReinicio;
