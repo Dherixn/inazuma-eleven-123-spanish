@@ -66,6 +66,10 @@ namespace Definitiva {
                 {"rival", "Supertécnicas del rival", "CPU_USE_SPECIAL_PERCENT",
                  "Con qué frecuencia usa supertécnicas la CPU (la parte más notable de la dificultad).",
                  {{"Normal", 40}, {"Pocas", 15}, {"Muchas", 70}, {"Siempre", 100}}, 0, nullptr},
+                // Solo en el INI del IE3 y del Ogro: el IE1 y el IE2 no tienen potenciación en los penaltis.
+                {"penaltis", "Penaltis de la CPU", "MATCH_PK_PU_COM_PER",
+                 "Con qué frecuencia se potencia la CPU en una tanda de penaltis. Solo en el IE3 y el Ogro.",
+                 {{"Normal", 30}, {"Menos", 10}, {"Más", 60}, {"Siempre", 100}}, 0, nullptr},
                 {"venta", "Precio al vender objetos", "ITEM_SELL_PERCENT", "Lo que pagan las tiendas por un objeto.",
                  {{"Normal (la mitad)", 50}, {"Precio completo", 100}}, 0, nullptr},
                 {"fueradejuego", "Fuera de juego", "OFFSIDE_EFFECTIVE", "Si se pita el fuera de juego en los partidos.",
