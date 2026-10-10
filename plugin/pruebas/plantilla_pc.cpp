@@ -55,9 +55,16 @@ static void Sinteticos() {
     long off = BuscarPlantilla(zona.data(), zona.size(), g, t);
     assert(off == static_cast<long>(inicio));
     assert(ContarRegistros(&zona[inicio], zona.size() - inicio, g, t) == 6);
+    // Uno con EXP muy por encima de su nivel (otro truco, una prueba): la búsqueda estricta se para ahí, pero
+    // con la plantilla ya encontrada se sigue contando a los de detrás.
+    P32(&zona[inicio + 3 * g.paso], 900000);
+    assert(ContarRegistros(&zona[inicio], zona.size() - inicio, g, t) == 3);
+    assert(ContarRegistros(&zona[inicio], zona.size() - inicio, g, t, false) == 6);
+    P32(&zona[inicio + 3 * g.paso], 100u * 13 * 13 + 5);
     // EXP por debajo de la de su nivel: no vale (así no se confunde con basura).
     P32(&zona[inicio + 2 * g.paso], 10);
     assert(ContarRegistros(&zona[inicio], zona.size() - inicio, g, t) == 2);
+    assert(ContarRegistros(&zona[inicio], zona.size() - inicio, g, t, false) == 2);
     assert(BuscarPlantilla(zona.data(), zona.size(), g, t) == -1);
 
     uint8_t actuales[4], maximos[4];

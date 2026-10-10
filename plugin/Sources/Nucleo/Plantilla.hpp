@@ -39,12 +39,15 @@ namespace Definitiva {
     uint32_t TopeExp(const JuegoDatos &t, uint16_t numero, uint8_t nivel);
 
     // ¿Es un registro de jugador plausible para este juego? Número jugable, nivel 1..99 y EXP entre la de su
-    // nivel y TopeExp.
-    bool RegistroValido(const uint8_t *reg, const GeometriaPlantilla &g, const JuegoDatos &t);
+    // nivel y TopeExp. Sin `estricto` no se mira el tope: para buscar la plantilla hace falta (evita falsos
+    // positivos), pero una vez encontrada, un jugador con más EXP de la cuenta (otro truco, una prueba) no
+    // debe dejar sin ayudas a los que van detrás.
+    bool RegistroValido(const uint8_t *reg, const GeometriaPlantilla &g, const JuegoDatos &t, bool estricto = true);
 
     // Registros válidos seguidos desde `inicio` (como mucho g.maxJugadores o lo que quepa en `disponible`);
     // se para en el primer número repetido.
-    uint32_t ContarRegistros(const uint8_t *inicio, size_t disponible, const GeometriaPlantilla &g, const JuegoDatos &t);
+    uint32_t ContarRegistros(const uint8_t *inicio, size_t disponible, const GeometriaPlantilla &g, const JuegoDatos &t,
+                             bool estricto = true);
 
     // Primer desplazamiento de la zona donde empieza una plantilla de al menos `minimo` registros (el
     // registro de antes, si cabe en la zona, no vale). -1 si no hay.

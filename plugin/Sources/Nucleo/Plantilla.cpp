@@ -25,7 +25,7 @@ namespace Definitiva {
         return t.ExpMinima(numero, mas);
     }
 
-    bool RegistroValido(const uint8_t *reg, const GeometriaPlantilla &g, const JuegoDatos &t) {
+    bool RegistroValido(const uint8_t *reg, const GeometriaPlantilla &g, const JuegoDatos &t, bool estricto) {
         uint8_t nivel = reg[g.offNivel];
         if (nivel < 1 || nivel > 99)
             return false;
@@ -34,14 +34,15 @@ namespace Definitiva {
         if (ficha < 0 || !t.Jugable(static_cast<size_t>(ficha)))
             return false;
         uint32_t exp = U32(reg);
-        return exp >= t.ExpMinima(numero, nivel) && exp < TopeExp(t, numero, nivel) && exp < EXP_IMPOSIBLE;
+        return exp >= t.ExpMinima(numero, nivel) && (!estricto || exp < TopeExp(t, numero, nivel)) && exp < EXP_IMPOSIBLE;
     }
 
-    uint32_t ContarRegistros(const uint8_t *inicio, size_t disponible, const GeometriaPlantilla &g, const JuegoDatos &t) {
+    uint32_t ContarRegistros(const uint8_t *inicio, size_t disponible, const GeometriaPlantilla &g, const JuegoDatos &t,
+                             bool estricto) {
         uint32_t n = 0;
         uint16_t vistos[128];
         while (n < g.maxJugadores && n < 128 && (n + 1) * static_cast<size_t>(g.paso) <= disponible
-               && RegistroValido(inicio + n * g.paso, g, t)) {
+               && RegistroValido(inicio + n * g.paso, g, t, estricto)) {
             uint16_t numero = U16(inicio + n * g.paso + 4);
             for (uint32_t k = 0; k < n; ++k)
                 if (vistos[k] == numero)

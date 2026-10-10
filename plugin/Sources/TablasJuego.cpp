@@ -1,5 +1,6 @@
 #include "TablasJuego.hpp"
 
+#include <algorithm>
 #include <cstdio>
 #include <map>
 #include <memory>
@@ -9,6 +10,7 @@
 #include <CTRPluginFramework.hpp>
 
 #include "Nucleo/LectorFA.hpp"
+#include "Nucleo/NombreSjis.hpp"
 
 using namespace CTRPluginFramework;
 
@@ -89,6 +91,47 @@ namespace Definitiva {
             || !datos->Construir(perfil, b, s, l, n))
             return nullptr;
         return (cache[juego] = std::move(datos)).get();
+    }
+
+    const std::vector<std::string> *TecnicasDe(const std::string &juego) {
+        Bloqueo bloqueo;
+        static std::map<std::string, std::vector<std::string>> cache;
+        auto it = cache.find(juego);
+        if (it != cache.end())
+            return &it->second;
+        // command.dat: IE1 registros de 24 B (nombre en +16), IE2 de 28 B (+20), IE3 y Ogro de 36 B (+24); el
+        // nombre es un índice × 32 en command.STR.
+        u32 paso = juego == "inazuma1" ? 24 : juego == "inazuma2" ? 28 : 36;
+        u32 offNombre = juego == "inazuma1" ? 16 : juego == "inazuma2" ? 20 : 24;
+        Fuente &fuente = LaFuente();
+        std::vector<uint8_t> dat, str;
+        std::string base = juego + "/data_iz/logic/";
+        if (!fuente.Abrir() || !fuente.fa.Leer(base + "command.dat", dat) || !fuente.fa.Leer(base + "command.STR", str))
+            return nullptr;
+        std::vector<std::string> nombres(dat.size() / paso);
+        for (size_t i = 0; i < nombres.size(); ++i) {
+            u32 indice = dat[i * paso + offNombre] | dat[i * paso + offNombre + 1] << 8;
+            size_t desde = static_cast<size_t>(indice) * 32;
+            if (indice && desde < str.size())
+                nombres[i] = DecodificarNombre(&str[desde], std::min<size_t>(64, str.size() - desde));
+        }
+        return &(cache[juego] = std::move(nombres));
+    }
+
+    std::string NombreDeJugador(const std::string &juego, const PerfilJuego &perfil, uint16_t numero) {
+        const JuegoDatos *t = TablasDe(juego, perfil);
+        int ficha = t ? t->Ficha(numero) : -1;
+        if (ficha < 0)
+            return Utils::Format("Jugador %u", numero);
+        // Los nombres del IE1 y el IE2 llevan glifos de dos letras de la traducción: se enseña el del mismo
+        // personaje (misma cara) en el IE3, que va en letras normales.
+        if (juego == "inazuma1" || juego == "inazuma2") {
+            const JuegoDatos *ie3 = TablasDe("inazuma3", PERFIL_IE3);
+            for (size_t i = 0; ie3 && i < ie3->Fichas(); ++i)
+                if (ie3->Jugable(i) && ie3->Cara(i) == t->Cara(static_cast<size_t>(ficha)))
+                    return DecodificarNombre(ie3->NombreCrudo(i), ie3->AnchoNombre());
+        }
+        return DecodificarNombre(t->NombreCrudo(static_cast<size_t>(ficha)), t->AnchoNombre());
     }
 
 }

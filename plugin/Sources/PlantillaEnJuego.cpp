@@ -2,6 +2,7 @@
 
 #include <CTRPluginFramework.hpp>
 
+#include "Nucleo/MemoriaTecnicas.hpp"
 #include "Nucleo/Plantilla.hpp"
 #include "TablasJuego.hpp"
 
@@ -39,6 +40,69 @@ namespace Definitiva {
         u32 gBase = 0, gCursor = 0, gPausa = 0;
         MultiplicadorExp gMultiplicador;
 
+        // Memoria de técnicas del juego que corre (una por juego, en la SD), para «Recuperar técnicas perdidas».
+        constexpr u32 OFF_TECNICAS = 0x38, OFF_NIVELES_TECNICA = 0x44, NUM_HUECOS = 6;
+        constexpr u32 GUARDAR_CADA = 100;  // llamadas (~10 s)
+        MemoriaTecnicas gMemoria;
+        JuegoActivo gJuegoMemoria = JuegoActivo::Ninguno;
+        bool gMemoriaSucia = false;
+        u32 gLlamadasSinGuardar = 0;
+
+        // El menú (recuperar técnicas) y el hilo de las ayudas tocan la plantilla y la memoria a la vez.
+        struct Cerrojo {
+            LightLock cerrojo;
+            Cerrojo() { LightLock_Init(&cerrojo); }
+        };
+        LightLock &ElCerrojo() {
+            static Cerrojo c;
+            return c.cerrojo;
+        }
+        struct Bloqueo {
+            Bloqueo() { LightLock_Lock(&ElCerrojo()); }
+            ~Bloqueo() { LightLock_Unlock(&ElCerrojo()); }
+        };
+
+        std::string RutaMemoria(JuegoActivo j) {
+            const char *nombre = j == JuegoActivo::IE1 ? "ie1" : j == JuegoActivo::IE2 ? "ie2" : j == JuegoActivo::IE3 ? "ie3" : "ogro";
+            return std::string("/Inazuma123Definitiva/tecnicas_") + nombre + ".txt";
+        }
+
+        void GuardarMemoria() {
+            if (!gMemoriaSucia || gJuegoMemoria == JuegoActivo::Ninguno)
+                return;
+            Directory::Create("/Inazuma123Definitiva");
+            File f;
+            if (File::Open(f, RutaMemoria(gJuegoMemoria), File::RWC | File::TRUNCATE) != 0)
+                return;
+            std::string texto = gMemoria.Serializar();
+            f.Write(texto.data(), texto.size());
+            f.Flush();
+            f.Close();
+            gMemoriaSucia = false;
+        }
+
+        void CambiarMemoria(JuegoActivo j) {
+            if (j == gJuegoMemoria)
+                return;
+            GuardarMemoria();
+            gJuegoMemoria = j;
+            gMemoria = MemoriaTecnicas();
+            File f;
+            if (j == JuegoActivo::Ninguno || File::Open(f, RutaMemoria(j), File::READ) != 0)
+                return;
+            u64 largo = f.GetSize();
+            std::string texto(largo > 0x40000 ? 0x40000 : static_cast<size_t>(largo), '\0');
+            if (!texto.empty() && f.Read(&texto[0], texto.size()) == 0)
+                gMemoria.Cargar(texto);
+            f.Close();
+        }
+
+        void LeerTecnicas(const u8 *r, bool u8Tecnicas, u16 salida[NUM_HUECOS]) {
+            for (u32 k = 0; k < NUM_HUECOS; ++k)
+                salida[k] = u8Tecnicas ? r[OFF_TECNICAS + k]
+                                       : static_cast<u16>(r[OFF_TECNICAS + 2 * k] | r[OFF_TECNICAS + 2 * k + 1] << 8);
+        }
+
         // Estado legible desde fuera (Azahar RPC, plugin/pruebas) para las pruebas: firma «PLNT», juego, opciones,
         // fichas de sus tablas, cursor de búsqueda, plantilla, jugadores y llamadas.
         volatile u32 gEstado[8] = {0x544E4C50, 0, 0, 0, 0, 0, 0, 0};
@@ -66,9 +130,16 @@ namespace Definitiva {
             gMultiplicador.Olvidar();
         }
 
-        void Aplicar(const GeometriaPlantilla &g, const JuegoDatos &t, u32 n, bool llenar, int factor) {
+        void Aplicar(const GeometriaPlantilla &g, const JuegoDatos &t, u32 n, bool llenar, int factor, bool recordar) {
+            bool u8Tecnicas = &g == &GEO_IE1;
             for (u32 i = 0; i < n; ++i) {
                 u8 *r = reinterpret_cast<u8 *>(gBase + i * g.paso);
+                if (recordar) {
+                    u16 tecnicas[NUM_HUECOS];
+                    LeerTecnicas(r, u8Tecnicas, tecnicas);
+                    if (gMemoria.Apuntar(t.Clave(static_cast<u16>(r[4] | r[5] << 8)), tecnicas, NUM_HUECOS))
+                        gMemoriaSucia = true;
+                }
                 if (llenar) {
                     u32 maximos = gBase + g.offPePt + i * g.pasoPePt;
                     if (TramoLegible(maximos, 4) == 4 && Escribible(reinterpret_cast<u32>(r) + OFF_PE_PT_ACTUALES, 4))
@@ -86,6 +157,63 @@ namespace Definitiva {
     }
 
     JuegoActivo JuegoActual() { return gJuego; }
+
+    std::vector<TecnicasPerdidas> BuscarTecnicasPerdidas() {
+        Bloqueo bloqueo;
+        std::vector<TecnicasPerdidas> salida;
+        Info inf = InfoDe(gJuego);
+        const JuegoDatos *t = inf.tablas ? TablasDe(inf.tablas, *inf.perfil) : nullptr;
+        if (!gBase || !t || gJuegoMemoria != gJuego)
+            return salida;
+        const GeometriaPlantilla &g = *inf.geo;
+        u32 n = ContarRegistros(reinterpret_cast<const u8 *>(gBase), TramoLegible(gBase, g.paso * g.maxJugadores), g, *t, false);
+        for (u32 i = 0; i < n; ++i) {
+            const u8 *r = reinterpret_cast<const u8 *>(gBase + i * g.paso);
+            u16 tecnicas[NUM_HUECOS];
+            LeerTecnicas(r, &g == &GEO_IE1, tecnicas);
+            u16 numero = static_cast<u16>(r[4] | r[5] << 8);
+            std::vector<u16> perdidas = gMemoria.Perdidas(t->Clave(numero), tecnicas, NUM_HUECOS);
+            if (!perdidas.empty())
+                salida.push_back({numero, perdidas});
+        }
+        return salida;
+    }
+
+    int DevolverTecnicas(uint16_t numero, const std::vector<uint16_t> &tecnicas) {
+        Bloqueo bloqueo;
+        Info inf = InfoDe(gJuego);
+        const JuegoDatos *t = inf.tablas ? TablasDe(inf.tablas, *inf.perfil) : nullptr;
+        if (!gBase || !t)
+            return -1;
+        const GeometriaPlantilla &g = *inf.geo;
+        bool u8Tecnicas = &g == &GEO_IE1;
+        u32 n = ContarRegistros(reinterpret_cast<const u8 *>(gBase), TramoLegible(gBase, g.paso * g.maxJugadores), g, *t, false);
+        for (u32 i = 0; i < n; ++i) {
+            u8 *r = reinterpret_cast<u8 *>(gBase + i * g.paso);
+            if (static_cast<u16>(r[4] | r[5] << 8) != numero || !Escribible(reinterpret_cast<u32>(r), g.paso))
+                continue;
+            int puestas = 0;
+            for (u16 tecnica : tecnicas) {
+                u16 actuales[NUM_HUECOS];
+                LeerTecnicas(r, u8Tecnicas, actuales);
+                for (u32 k = 0; k < NUM_HUECOS; ++k) {
+                    if (actuales[k])
+                        continue;
+                    if (u8Tecnicas) {
+                        r[OFF_TECNICAS + k] = static_cast<u8>(tecnica);
+                    } else {
+                        r[OFF_TECNICAS + 2 * k] = static_cast<u8>(tecnica);
+                        r[OFF_TECNICAS + 2 * k + 1] = static_cast<u8>(tecnica >> 8);
+                        r[OFF_NIVELES_TECNICA + k] = 0;  // como las aprendidas en el traspaso
+                    }
+                    ++puestas;
+                    break;
+                }
+            }
+            return puestas;
+        }
+        return -1;
+    }
 
     u32 DireccionPuntos() {
         JuegoActivo juego = gJuego;
@@ -119,11 +247,20 @@ namespace Definitiva {
         return Escribible(puntos, 8) ? puntos : 0;
     }
 
-    void CuidarPlantilla(JuegoActivo juego, bool llenarPePt, int factorExp) {
+    void CuidarPlantilla(JuegoActivo juego, bool llenarPePt, int factorExp, bool recordar) {
+        Bloqueo bloqueo;
         gEstado[1] = static_cast<u32>(juego);
-        gEstado[2] = (llenarPePt ? 1 : 0) | static_cast<u32>(factorExp) << 8;
+        gEstado[2] = (llenarPePt ? 1 : 0) | static_cast<u32>(factorExp) << 8 | (recordar ? 1u : 0u) << 16;
         gEstado[7] = gEstado[7] + 1;
-        if (juego == JuegoActivo::Ninguno || (!llenarPePt && factorExp <= 1)) {
+        if (++gLlamadasSinGuardar >= GUARDAR_CADA) {
+            gLlamadasSinGuardar = 0;
+            GuardarMemoria();
+        }
+        if (!recordar)
+            CambiarMemoria(JuegoActivo::Ninguno);
+        else if (juego != JuegoActivo::Ninguno)  // entre cargas se ve «Ninguno» un momento: se sigue con la de antes
+            CambiarMemoria(juego);
+        if (juego == JuegoActivo::Ninguno || (!llenarPePt && factorExp <= 1 && !recordar)) {
             gJuego = juego;
             Olvidar();
             return;
@@ -143,10 +280,10 @@ namespace Definitiva {
         const GeometriaPlantilla &g = *inf.geo;
         if (gBase) {
             u32 tramo = TramoLegible(gBase, g.paso * g.maxJugadores);
-            u32 n = ContarRegistros(reinterpret_cast<const u8 *>(gBase), tramo, g, *t);
+            u32 n = ContarRegistros(reinterpret_cast<const u8 *>(gBase), tramo, g, *t, false);
             gEstado[6] = n;
             if (n >= MINIMO) {
-                Aplicar(g, *t, n, llenarPePt, factorExp);
+                Aplicar(g, *t, n, llenarPePt, factorExp, recordar);
                 return;
             }
             Olvidar();  // otra partida, vuelta al título o cambio de juego: se vuelve a buscar

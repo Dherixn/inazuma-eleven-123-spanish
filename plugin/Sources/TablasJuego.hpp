@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "Nucleo/DatosDestino.hpp"
 
@@ -10,5 +11,11 @@ namespace Definitiva {
     // primera vez que se piden. Se lee la copia del mod en la SD (LayeredFS de Luma3DS) si existe y, si
     // no, la RomFS del juego (en Azahar ya incluye la carpeta de mods). nullptr si no se pueden leer.
     const JuegoDatos *TablasDe(const std::string &juego, const PerfilJuego &perfil);
+
+    // Nombres de las técnicas del juego por número (command.dat y command.STR). nullptr si no se pueden leer.
+    const std::vector<std::string> *TecnicasDe(const std::string &juego);
+
+    // Nombre legible de un jugador para el menú (en IE1/IE2, el del mismo personaje en el IE3).
+    std::string NombreDeJugador(const std::string &juego, const PerfilJuego &perfil, uint16_t numero);
 
 }

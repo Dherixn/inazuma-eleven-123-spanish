@@ -13,6 +13,7 @@
 #include "Nucleo/TablaIni.hpp"
 #include "PlantillaEnJuego.hpp"
 #include "Secretos.hpp"
+#include "TablasJuego.hpp"
 
 using namespace CTRPluginFramework;
 
@@ -87,6 +88,12 @@ namespace Definitiva {
                  "Multiplica la EXP que gana cada jugador. El juego sube de nivel al acabar el partido, así que "
                  "parte de lo ganado de más puede notarse en el siguiente.",
                  {{"Normal (x1)", 1}, {"Doble (x2)", 2}, {"Triple (x3)", 3}}, 0, nullptr},
+                // No cambia nada del juego: solo apunta en la SD, para «Recuperar técnicas perdidas» (#13).
+                {"tecnicas", "Memoria de técnicas", nullptr,
+                 "Apunta en la SD las técnicas que llega a saber cada jugador. No cambia nada del juego: sirve para "
+                 "devolvérselas con «Recuperar técnicas perdidas» si la historia se las quita (en el IE3, Shawn y "
+                 "Jordan vuelven tras el partido contra Corea sin sus técnicas de manual).",
+                 {{"Sí", 1}, {"No", 0}}, 0, nullptr},
             };
             return lista;
         }
@@ -227,7 +234,7 @@ namespace Definitiva {
                 }
                 if (clasificar) {
                     juego = visto;
-                    CuidarPlantilla(juego, Valor("pept") != 0, static_cast<int>(Valor("exp")));
+                    CuidarPlantilla(juego, Valor("pept") != 0, static_cast<int>(Valor("exp")), Valor("tecnicas") != 0);
                     SecretosPendientes();
                 }
                 if (vuelta % 500 == 0)
@@ -258,6 +265,69 @@ namespace Definitiva {
             }
         }
 
+        const char *TablasDelJuego(JuegoActivo j, const PerfilJuego *&perfil) {
+            switch (j) {
+            case JuegoActivo::IE1: perfil = &PERFIL_IE1; return "inazuma1";
+            case JuegoActivo::IE2: perfil = &PERFIL_IE2; return "inazuma2";
+            case JuegoActivo::IE3: perfil = &PERFIL_IE3; return "inazuma3";
+            case JuegoActivo::Ogro: perfil = &PERFIL_IE3; return "inazuma3_ogre";
+            default: perfil = nullptr; return nullptr;
+            }
+        }
+
+        void RecuperarTecnicas(MenuEntry *) {
+            const char *titulo = "Recuperar técnicas";
+            if (Valor("tecnicas") == 0) {
+                MessageBox(titulo, Ajustar("Activa antes «Memoria de técnicas»: sin ella no se apunta nada."))();
+                return;
+            }
+            const PerfilJuego *perfil = nullptr;
+            const char *juego = TablasDelJuego(JuegoActual(), perfil);
+            std::vector<TecnicasPerdidas> lista = juego ? BuscarTecnicasPerdidas() : std::vector<TecnicasPerdidas>();
+            if (!juego) {
+                MessageBox(titulo, Ajustar("Carga tu partida, anda un poco por el mapa y vuelve a probar."))();
+                return;
+            }
+            if (lista.empty()) {
+                MessageBox(titulo, Ajustar("Nadie de tu equipo ha perdido técnicas que se hayan apuntado. (Si "
+                                           "acabas de cargar la partida, espera unos segundos.)"))();
+                return;
+            }
+            const std::vector<std::string> *nombres = TecnicasDe(juego);
+            auto NombreTecnica = [&](u16 id) {
+                return nombres && id < nombres->size() && !(*nombres)[id].empty() ? (*nombres)[id]
+                                                                                   : Utils::Format("técnica %u", id);
+            };
+            std::vector<std::string> opciones;
+            for (const TecnicasPerdidas &p : lista)
+                opciones.push_back(Utils::Format("%s (%u)", NombreDeJugador(juego, *perfil, p.numero).c_str(),
+                                                 static_cast<unsigned>(p.tecnicas.size())));
+            Keyboard teclado(Ajustar("Jugadores que han perdido técnicas. Elige a quién devolvérselas."), opciones);
+            int r = teclado.Open();
+            if (r < 0)
+                return;
+            const TecnicasPerdidas &p = lista[r];
+            std::string detalle;
+            for (u16 id : p.tecnicas)
+                detalle += "\n- " + NombreTecnica(id);
+            std::string nombre = NombreDeJugador(juego, *perfil, p.numero);
+            if (!MessageBox(titulo, Ajustar(nombre + " sabía:") + detalle + "\n\n" +
+                                        Ajustar("Se ponen en sus huecos libres (tiene 6). ¿Devolvérselas?"),
+                            DialogType::DialogYesNo)())
+                return;
+            int puestas = DevolverTecnicas(p.numero, p.tecnicas);
+            if (puestas < 0)
+                MessageBox(titulo, Ajustar(nombre + " ya no está en la plantilla. Vuelve a abrir esta opción."))();
+            else if (puestas == 0)
+                MessageBox(titulo, Ajustar(nombre + " no tiene huecos libres: olvida alguna técnica en el juego y "
+                                                    "vuelve a probar."))();
+            else
+                MessageBox(titulo, Ajustar(Utils::Format("%s recupera %d de %u. Guarda la partida en el juego para "
+                                                         "conservarlas.",
+                                                         nombre.c_str(), puestas,
+                                                         static_cast<unsigned>(p.tecnicas.size()))))();
+        }
+
     }
 
     void IniciarAyudas() {
@@ -276,6 +346,9 @@ namespace Definitiva {
             a.entrada = new MenuEntry(Nombre(a), nullptr, Elegir, Ajustar(nota));
             *carpeta += a.entrada;
         }
+        *carpeta += new MenuEntry("Recuperar técnicas perdidas", nullptr, RecuperarTecnicas,
+                                  Ajustar("Devuelve a tus jugadores las técnicas que sabían y han perdido (lo que "
+                                          "apuntó «Memoria de técnicas»). Lo eliges tú, jugador a jugador."));
         return carpeta;
     }
 
