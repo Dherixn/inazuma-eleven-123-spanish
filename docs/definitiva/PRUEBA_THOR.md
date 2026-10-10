@@ -15,7 +15,8 @@ debería verse. Si algo no cuadra, apunta el paso, el juego, el momento de la hi
 ## 1. Inazuma Eleven (IE1)
 
 1. Juega con normalidad. Prueba las Ayudas: encuentros («Ninguno» y «Más»), velocidad al andar, EXP ×2,
-   Pasión y Amistad ×2, PE y PT siempre llenos.
+   Pasión y Amistad ×2, PE y PT siempre llenos y «Nivel de los rivales» (cuenta desde el siguiente partido;
+   en un duelo se nota enseguida en los atributos del rival).
    - Debería verse: los cambios al momento o al volver al mapa (lo dice cada ayuda).
 2. Guarda a menudo. «Partidas» copia los archivos a la SD.
 
@@ -45,10 +46,12 @@ debería verse. Si algo no cuadra, apunta el paso, el juego, el momento de la hi
 4. Tras el prólogo, Mark está solo un rato con el nivel de la historia (el plugin necesita 4 jugadores para
    actuar). En Balón Bazar la historia une a Nathan, Kevin y Jack.
    - Debería verse: Mark y ellos con el nivel que traían del IE2.
-5. **Momento clave: la selección de Inazuma Japón.** Apunta quién queda en el grupo y en la reserva, y si alguien
+5. Tras el primer partido del IE3, mira `/Inazuma123Definitiva/equipo_*.txt`: solo debe haber jugadores
+   tuyos (si aparece un rival, apúntalo: en el IE1 y el IE2 ya se evita).
+6. **Momento clave: la selección de Inazuma Japón.** Apunta quién queda en el grupo y en la reserva, y si alguien
    sale repetido o con nivel 1 cuando traía más. Los que la historia descarta (Kevin, Max, David…) se pueden
    traer después con «Fichajes especiales → Recuperar jugadores».
-6. Tras el partido contra Corea, Shawn vuelve: debería volver con su nivel y sus técnicas.
+7. Tras el partido contra Corea, Shawn vuelve: debería volver con su nivel y sus técnicas.
 
 ## 5. Del IE3 a La amenaza del Ogro
 

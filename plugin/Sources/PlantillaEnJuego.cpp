@@ -2,6 +2,7 @@
 
 #include <CTRPluginFramework.hpp>
 
+#include <algorithm>
 #include <cstring>
 
 #include "Nucleo/MemoriaEquipo.hpp"
@@ -61,6 +62,7 @@ namespace Definitiva {
         // identificador de la partida en +0xBA8 (como el archivo).
         constexpr u32 OFF_PUNTOS_DATOS = 0x4D4, OFF_IDENTIFICADOR_DATOS = 0xBA8, TOPE_PUNTOS = 99999;
         u32 gEspejo = 0, gPausaEspejo = 0;
+        int gNivelEquipo = 0;
         u32 gUltimosPuntos[2] = {};
         bool gPuntosVistos = false;
 
@@ -211,6 +213,7 @@ namespace Definitiva {
         // La partida cambia (otra cargada, vuelta al título...): se guarda la memoria y se vuelve a buscar todo.
         void Olvidar() {
             gBase = 0;
+            gNivelEquipo = 0;
             gMultiplicador.Olvidar();
             gEspejo = gPausaEspejo = 0;
             gPuntosVistos = false;
@@ -385,7 +388,10 @@ namespace Definitiva {
             // Devolver lo perdido solo en IE2, IE3 y Ogro: el IE1 tiene tres espacios en un archivo y la memoria no
             // sabría de cuál es.
             bool restaurar = recordar && gPartidaMemoria && juego != JuegoActivo::IE1;
+            std::vector<u8> niveles;
+            niveles.reserve(n);
             for (u32 i = 0; i < n; ++i) {
+                niveles.push_back(reinterpret_cast<const u8 *>(gBase + i * g.paso)[g.offNivel]);
                 u8 *r = reinterpret_cast<u8 *>(gBase + i * g.paso);
                 if (recordar && gPartidaMemoria) {
                     u16 numero = static_cast<u16>(r[4] | r[5] << 8), tecnicas[NUM_HUECOS];
@@ -423,11 +429,22 @@ namespace Definitiva {
                 if (nueva != exp && Escribible(reinterpret_cast<u32>(r), 4))
                     *reinterpret_cast<u32 *>(r) = nueva;  // registros alineados a 4
             }
+            // Nivel del equipo para «Nivel de los rivales: a tu nivel» (los 11 mejores, estén en el grupo o no).
+            std::sort(niveles.begin(), niveles.end(), [](u8 a, u8 b) { return a > b; });
+            u32 cuantos = niveles.size() < 11 ? static_cast<u32>(niveles.size()) : 11, suma = 0;
+            for (u32 k = 0; k < cuantos; ++k)
+                suma += niveles[k];
+            gNivelEquipo = cuantos ? static_cast<int>((suma + cuantos / 2) / cuantos) : 0;
         }
 
     }
 
     JuegoActivo JuegoActual() { return gJuego; }
+
+    int NivelDelEquipo() {
+        Bloqueo bloqueo;
+        return gNivelEquipo;
+    }
 
     std::vector<TecnicasPerdidas> BuscarTecnicasPerdidas() {
         Bloqueo bloqueo;
@@ -546,7 +563,8 @@ namespace Definitiva {
         return Escribible(puntos, 8) ? puntos : 0;
     }
 
-    void CuidarPlantilla(JuegoActivo juego, bool llenarPePt, int factorExp, bool recordar, int factorPuntos) {
+    void CuidarPlantilla(JuegoActivo juego, bool llenarPePt, int factorExp, bool recordar, int factorPuntos,
+                         bool medirNivel) {
         Bloqueo bloqueo;
         gEstado[1] = static_cast<u32>(juego);
         gEstado[2] = (llenarPePt ? 1 : 0) | static_cast<u32>(factorExp) << 8 | (recordar ? 1u : 0u) << 16;
@@ -557,7 +575,7 @@ namespace Definitiva {
         }
         if (!recordar)
             CambiarMemoria(0, 0);
-        if (juego == JuegoActivo::Ninguno || (!llenarPePt && factorExp <= 1 && !recordar && factorPuntos <= 1)) {
+        if (juego == JuegoActivo::Ninguno || (!llenarPePt && factorExp <= 1 && !recordar && factorPuntos <= 1 && !medirNivel)) {
             gJuego = juego;
             Olvidar();
             return;

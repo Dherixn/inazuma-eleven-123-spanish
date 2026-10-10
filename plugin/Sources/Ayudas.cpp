@@ -11,7 +11,9 @@
 
 #include "Nucleo/Texto.hpp"
 #include "Nucleo/TablaIni.hpp"
+#include "Nucleo/Rivales.hpp"
 #include "PlantillaEnJuego.hpp"
+#include "RivalesEnJuego.hpp"
 #include "Secretos.hpp"
 #include "TablasJuego.hpp"
 
@@ -70,6 +72,15 @@ namespace Definitiva {
                 {"penaltis", "Penaltis de la CPU", "MATCH_PK_PU_COM_PER",
                  "Con qué frecuencia se potencia la CPU en una tanda de penaltis. Solo en el IE3 y el Ogro.",
                  {{"Normal", 30}, {"Menos", 10}, {"Más", 60}, {"Siempre", 100}}, 0, nullptr},
+                // Sobre la copia de games.dat en memoria (ver RivalesEnJuego.hpp): el nivel de cada partido.
+                {"rivales", "Nivel de los rivales", nullptr,
+                 "El nivel de los equipos rivales en los partidos de la historia, los duelos y los encuentros por el "
+                 "mapa. «A tu nivel»: ninguno por debajo de la media de tus 11 mejores, para cuando traes tu equipo "
+                 "de otro juego. Cuenta desde el siguiente partido.",
+                 {{"Como el original", RIVALES_ORIGINAL}, {"Más fáciles (-30 %)", RIVALES_FACILES},
+                  {"Más duros (+25 %)", RIVALES_DUROS}, {"Muy duros (+50 %)", RIVALES_MUY_DUROS},
+                  {"A tu nivel", RIVALES_A_TU_NIVEL}},
+                 0, nullptr},
                 {"venta", "Precio al vender objetos", "ITEM_SELL_PERCENT", "Lo que pagan las tiendas por un objeto.",
                  {{"Normal (la mitad)", 50}, {"Precio completo", 100}}, 0, nullptr},
                 {"fueradejuego", "Fuera de juego", "OFFSIDE_EFFECTIVE", "Si se pita el fuera de juego en los partidos.",
@@ -243,9 +254,10 @@ namespace Definitiva {
                 if (clasificar) {
                     juego = visto;
                     CuidarPlantilla(juego, Valor("pept") != 0, static_cast<int>(Valor("exp")), Valor("tecnicas") != 0,
-                                    static_cast<int>(Valor("puntos")));
+                                    static_cast<int>(Valor("puntos")), Valor("rivales") == RIVALES_A_TU_NIVEL);
                     SecretosPendientes();
                 }
+                CuidarRivales(juego, static_cast<int>(Valor("rivales")), NivelDelEquipo());
                 if (vuelta % 500 == 0)
                     Buscar(ZONA_LARGO);
                 else if (vuelta % 10 == 0)

@@ -19,6 +19,14 @@ namespace Definitiva {
     // números de técnica son los mismos en los tres juegos. nullptr si no se puede leer.
     const std::vector<uint8_t> *ElementosDeTecnicas();
 
+    // Partidos del juego: games.dat (uno cada 48 B; ver Nucleo/Rivales.hpp) y, por número de equipo, el ajuste más
+    // alto de sus jugadores en team.pkb. nullptr si no se pueden leer.
+    struct Partidos {
+        std::vector<uint8_t> tabla;
+        std::vector<uint8_t> extra;
+    };
+    const Partidos *PartidosDe(const std::string &juego);
+
     // Números que la historia del juego une al equipo (ordenados; ver Nucleo/Eventos.hpp). Lee todos los
     // eventos la primera vez (unos segundos); nullptr si no se pueden leer.
     const std::vector<uint16_t> *AltasDe(const std::string &juego);

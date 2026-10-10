@@ -15,8 +15,13 @@ namespace Definitiva {
     // nivel, EXP y técnicas a quien llega con la historia tras un traspaso o vuelve con menos nivel del que tuvo.
     // Se llama unas diez veces por segundo desde el hilo de las ayudas; las búsquedas van a trozos para no frenar
     // el juego.
-    // `factorPuntos` multiplica igual la Pasión y la Amistad que se ganan (las de fichar).
-    void CuidarPlantilla(JuegoActivo juego, bool llenarPePt, int factorExp, bool recordar, int factorPuntos = 1);
+    // `factorPuntos` multiplica igual la Pasión y la Amistad que se ganan (las de fichar). Con `medirNivel`, busca la
+    // plantilla aunque no haya otra ayuda puesta, para NivelDelEquipo.
+    void CuidarPlantilla(JuegoActivo juego, bool llenarPePt, int factorExp, bool recordar, int factorPuntos = 1,
+                         bool medirNivel = false);
+
+    // Media del nivel de los 11 mejores de la plantilla vista la última vez (grupo y reserva); 0 si no se sabe.
+    int NivelDelEquipo();
 
     struct TecnicasPerdidas {
         uint16_t numero;

@@ -54,6 +54,14 @@ esto copia datos del juego al repositorio: son posiciones, tamaños y comportami
 - Shawn tiene tres fichas jugables en el IE3 (2329 DF, 2337 y 2338 DL): por eso la memoria de técnicas va
   por personaje (la clave del nombre) y no por número.
 - Títulos de equipo del IE2 (`rpgtitle.STR`): la caja tiene 14 casillas.
+- **Nivel de los rivales: `logic/games.dat`**, un registro de 48 B por partido (historia, duelos y encuentros
+  por el mapa; en los encuentros, el registro es el número del equipo): equipo rival (u16, el número de la
+  cabecera de `team.pkb`, +32) en +0, 1 en +2 si lleva nivel y **el nivel en +3**. Cada jugador del rival suma
+  su ajuste de `team.pkb` (byte +4 de su hueco de 8 B; de 0 a 40). El juego tiene la tabla entera en el heap
+  mientras se juega (no en el título ni en el mapa del mundo) y la vuelve a cargar del archivo al cambiar de
+  zona, a veces en otro sitio. Medido en Azahar con un duelo del IE2 (registro 35, nivel 1): con el +3 a 77
+  sus cuatro rivales salen a nivel 77 y sus atributos pasan de 4-8 a 23-79; con la ayuda «a tu nivel», a 17.
+  Así que la dificultad no estaba en `team.pkb` (#11): ver `Nucleo/Rivales.hpp` y `RivalesEnJuego.hpp`.
 - Descripciones del IE2: la traducción junta letras de dos en dos con glifos propios (tabla generada fuera
   del repositorio); en ancho completo caben 18 por línea. Las del IE3 van en ancho completo.
 

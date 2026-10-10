@@ -12,6 +12,7 @@
 #include "Nucleo/LectorFA.hpp"
 #include "Nucleo/Eventos.hpp"
 #include "Nucleo/NombreSjis.hpp"
+#include "Nucleo/Rivales.hpp"
 
 using namespace CTRPluginFramework;
 
@@ -134,6 +135,26 @@ namespace Definitiva {
             elementos[i] = dat[i * 36 + 8];
         leidos = true;
         return &elementos;
+    }
+
+    const Partidos *PartidosDe(const std::string &juego) {
+        Bloqueo bloqueo;
+        static std::map<std::string, std::unique_ptr<Partidos>> cache;
+        auto it = cache.find(juego);
+        if (it != cache.end())
+            return it->second.get();
+        constexpr uint32_t EQUIPOS = 1024;  // el número de equipo más alto es 667 (Ogro)
+        Fuente &fuente = LaFuente();
+        std::unique_ptr<Partidos> p(new Partidos());
+        std::vector<uint8_t> pkb;
+        std::string base = juego + "/data_iz/logic/";
+        if (!fuente.Abrir() || !fuente.fa.Leer(base + "games.dat", p->tabla) || !fuente.fa.Leer(base + "team.pkb", pkb)
+            || p->tabla.size() < PARTIDO_PASO)
+            return nullptr;
+        uint32_t paso = juego == "inazuma1" || juego == "inazuma2" ? 320 : 352;
+        p->extra.resize(EQUIPOS);
+        ExtraDeEquipos(pkb.data(), static_cast<uint32_t>(pkb.size()), paso, p->extra.data(), EQUIPOS);
+        return (cache[juego] = std::move(p)).get();
     }
 
     const std::vector<uint16_t> *AltasDe(const std::string &juego) {
