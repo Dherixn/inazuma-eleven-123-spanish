@@ -8,6 +8,7 @@
 #include "Nucleo/Partida.hpp"
 #include "Nucleo/Traspaso.hpp"
 #include "Partidas.hpp"
+#include "Cronica.hpp"
 #include "TablasJuego.hpp"
 
 using namespace CTRPluginFramework;
@@ -165,6 +166,9 @@ namespace Definitiva {
                                     copia.c_str()));
                 return;
             }
+            const char *puente = TextoPuente(destino.juego, std::string(elegido->juego) == "inazuma3");
+            if (*puente)
+                MessageBox("Capítulo siguiente", Ajustar(puente))();
             Aviso(Utils::Format("Han llegado %u jugadores nuevos y %u ya conocidos han mejorado.\n"
                                 "Copia de seguridad: %s\n\n"
                                 "Para verlos, sal al título de %s SIN GUARDAR y pulsa Continuar.",
@@ -197,11 +201,16 @@ namespace Definitiva {
         void TraerIE2aOgro(MenuEntry *) { Traer(DESDE_IE2, IE3_OGRO); }
         void TraerIE3aOgro(MenuEntry *) { Traer(DESDE_IE3, IE3_OGRO); }
 
+        void VerCronica(MenuEntry *) { MessageBox("Crónica de la leyenda", Ajustar(TextoCronica()))(); }
+
     }
 
     MenuFolder *CrearMenuContinuidad(const char *carpetaCopias) {
         gCarpetaCopias = carpetaCopias;
         MenuFolder *carpeta = new MenuFolder("Continuidad", "Tu equipo pasa de un juego al siguiente.");
+        *carpeta += new MenuEntry("Crónica de la leyenda", nullptr, VerCronica,
+                                  Ajustar("Tus partidas de los tres juegos como una sola historia: temporadas, "
+                                          "nivel del equipo, jugadores y horas."));
         *carpeta += new MenuEntry("Traer mi equipo del IE1 a Tormenta de Fuego", nullptr, TraerIE1aFuego,
                                   "Tus fichajes del Inazuma Eleven llegan al IE2 con su nivel y técnicas.\n"
                                   "Hazlo desde el menú de la recopilación o vuelve luego al título.");
