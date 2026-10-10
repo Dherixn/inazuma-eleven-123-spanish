@@ -37,15 +37,30 @@ AZAHAR (Windows, Android, AYN Thor)
 - «sdmc/luma/plugins/{titulo}/Definitiva.3gx» va como «/luma/plugins/{titulo}/Definitiva.3gx».
 - En el menú de Rosalina (L + Abajo + Select): «Plugin Loader» activado; «Game Patching» activado.
 
+CÓMO SE JUEGA DE PRINCIPIO A FIN
+--------------------------------
+1. Juega el Inazuma Eleven (IE1).
+2. Empieza el IE2 (Tormenta de Fuego o Ventisca Eterna) y guarda una vez. Vuelve al menú del recopilatorio,
+   pulsa Select y en «Continuidad» elige «Traer mi equipo del IE1…». Sal al título SIN GUARDAR y pulsa
+   Continuar.
+3. Igual del IE2 al IE3 (Rayo Celeste o Fuego Explosivo) y del IE3 a La amenaza del Ogro.
+Quien ya está en la partida nueva mejora. A quien la historia va a unir más adelante no se le crea: llega
+con la historia y el plugin le devuelve su nivel y sus técnicas en cuanto aparece (deja activada «Memoria
+del equipo» en Ayudas). El resto espera en la reserva: «Grupo y reserva» los pasa al grupo.
+
 QUÉ TRAE
 --------
 - Continuidad: tu equipo pasa del IE1 al IE2, del IE2 al IE3 y del IE3 a La amenaza del Ogro, con su
   nivel y sus técnicas; «Crónica de la leyenda» con tus tres temporadas.
-- Fichajes especiales: Aiden Froste (cuando Shawn aprende «Aullido de lobo»).
-- Ayudas opcionales (de fábrica, todo como el original): encuentros, velocidad al andar, supertécnicas
-  del rival, precio de venta, fuera de juego, versión (exclusivos de las dos versiones en una partida),
-  PE y PT siempre llenos, experiencia x2/x3.
-- Copias de seguridad de las partidas antes de cada traspaso (en la SD, /Inazuma123Definitiva/partidas).
+- Memoria del equipo: nadie pierde lo suyo por la historia. Quien se va y vuelve, vuelve como se fue;
+  «Recuperar jugadores» trae de vuelta a quien la historia no vuelve a traer.
+- Fichajes especiales: Aiden Froste (cuando Shawn aprende «Aullido de lobo»), «Fichaje libre» (cualquier
+  jugador, también los de Wi-Fi o StreetPass), «Grupo y reserva» y «Contenido de StreetPass y Wi-Fi»
+  (desbloquea lo que en la consola pedía 45 encuentros por StreetPass).
+- Ayudas opcionales (de fábrica, como el original salvo la memoria del equipo): encuentros, velocidad al
+  andar, supertécnicas del rival, penaltis de la CPU, precio de venta, fuera de juego, versión (exclusivos
+  de las dos versiones en una partida), PE y PT siempre llenos, experiencia x2/x3.
+- Copias de seguridad de las partidas antes de cada cambio (en la SD, /Inazuma123Definitiva/partidas).
 - Y algún secreto: dicen que el abuelo Daisuke dejó un cuaderno...
 """
 
