@@ -213,8 +213,7 @@ namespace Definitiva {
         *carpeta += new MenuEntry("Traer mi equipo del IE2 a La amenaza del Ogro", nullptr, TraerIE2aOgro,
                                   "Tus fichajes del IE2 (Fuego o Ventisca) llegan al IE3.");
         *carpeta += new MenuEntry("Traer mi equipo del IE3 a La amenaza del Ogro", nullptr, TraerIE3aOgro,
-                                  "El capítulo final: tu Inazuma Japón de Rayo Celeste o Fuego Explosivo, con su
-"
+                                  "El capítulo final: tu Inazuma Japón de Rayo Celeste o Fuego Explosivo, con su\n"
                                   "nivel y técnicas, llega a La amenaza del Ogro para plantar cara al Ogro.");
         return carpeta;
     }
