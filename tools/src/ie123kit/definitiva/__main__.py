@@ -6,6 +6,7 @@
         -o salida.dat
     python -m ie123kit.definitiva construir --base archive.fa_traducido -o archive.fa
     python -m ie123kit.definitiva paquete --mod .../load/mods/00040000000BB800 --plugin Definitiva-release.3gx -o dist/X
+    python -m ie123kit.definitiva saltos --jp base/romfs/archive.fa --es .../romfs/archive.fa
 
 Cada DIR es la carpeta que contiene ``unitbase.dat`` y ``unitstat.dat`` de ese juego (en la
 recopilación: ``inazumaN/data_iz/logic`` dentro de archive.fa; en las ROM NDS: ``data_iz/logic/sp``
@@ -165,6 +166,28 @@ def _paquete(args: argparse.Namespace) -> int:
     return 0
 
 
+def _saltos(args: argparse.Namespace) -> int:
+    """Saltos de los eventos traducidos contra el japonés (saltos.py). Código 1 si alguno va donde no debe."""
+    from ie123kit.definitiva import saltos
+    from ie123kit.nucleo.contenedores.fa import FaArchive
+
+    jp, es = FaArchive(str(args.jp)), FaArchive(str(args.es))
+    fallos = 0
+    for guion in saltos.GUIONES:
+        r = saltos.comprobar(lambda ruta: jp.read(ruta) if jp.exists(ruta) else None,
+                             lambda ruta: es.read(ruta) if es.exists(ruta) else None, guion)
+        if r is None:
+            print(f"{guion}: no está en los dos")
+            continue
+        mal = sum(r.mal.values())
+        print(f"{guion}: {r.traducidos} eventos traducidos, {r.revisados} saltos, {mal} mal en {len(r.mal)} eventos, "
+              f"{len(r.sin_alinear)} sin alinear")
+        for eid, n in r.mal.most_common(10):
+            print(f"  {eid}: {n}")
+        fallos += mal + len(r.sin_alinear)
+    return 1 if fallos else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m ie123kit.definitiva")
     sub = parser.add_subparsers(dest="orden", required=True)
@@ -198,6 +221,10 @@ def main(argv: list[str] | None = None) -> int:
     q.add_argument("--plugin", required=True, help="Definitiva-release.3gx")
     q.add_argument("-o", "--salida", required=True)
     q.set_defaults(func=_paquete)
+    s = sub.add_parser("saltos", help="comprueba los saltos de los eventos traducidos contra el japonés")
+    s.add_argument("--jp", required=True, help="archive.fa japonés (romfs del juego)")
+    s.add_argument("--es", required=True, help="archive.fa traducido (el de la carpeta de mods)")
+    s.set_defaults(func=_saltos)
     args = parser.parse_args(argv)
     return args.func(args)
 

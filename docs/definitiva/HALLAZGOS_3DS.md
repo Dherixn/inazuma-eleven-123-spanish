@@ -94,6 +94,9 @@ esto copia datos del juego al repositorio: son posiciones, tamaños y comportami
   - Consecuencia para el traspaso: quien la historia va a unir no se crea (se quedaría en la reserva y el
     grupo, corto o vacío: tras el prólogo del IE3 la historia quita a Paolo y Héctor y une a Mark). Se apunta
     en la memoria del equipo y el plugin le devuelve lo suyo cuando la historia lo crea.
+- Saltos: un argumento de tipo 4 es el identificador de la instrucción de destino (0x6001/0x6002 y otras). En
+  0x301D (texto) el de tipo 4 es un índice de texto. Insertar instrucciones obliga a desplazar los destinos
+  (#107 de la traducción); `python -m ie123kit.definitiva saltos` lo comprueba contra el japonés.
 - Bajas de la historia del IE3: en la selección (32011850) Kevin, Max, David, Marvin, Shadow e Isaac; tras
   Corea (32041600) Shawn y Jordan (Shawn vuelve después); en 32070100, Tod.
 

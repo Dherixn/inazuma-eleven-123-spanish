@@ -65,7 +65,7 @@ en `/luma/titles/00040000000BB800/` y el plugin en `/luma/plugins/00040000000BB8
 |---|---|---|
 | Plugin 3GX | `plugin/` (CTRPluginFramework) | menús, traspaso y fichajes sobre los archivos de partida, ayudas sobre la memoria (`INAZUMA.INI` en memoria y la plantilla), secretos |
 | Capa de datos | `tools/src/ie123kit/definitiva/` (`construir`, `aiden`, `titulos`) | `archive.fa` de la edición definitiva sobre el traducido |
-| Herramientas | `python -m ie123kit.definitiva` | `traspasar`, `construir`, `paquete`, `identidades` |
+| Herramientas | `python -m ie123kit.definitiva` | `traspasar`, `construir`, `paquete`, `identidades`, `saltos` |
 | Pruebas | `tools/tests/unidad/test_definitiva_*.py`, `plugin/pruebas/` | partidas y tablas sintéticas; en local, con la ROM y Azahar (`azahar_ctl.py`) |
 
 ## Probado en Azahar
@@ -87,6 +87,9 @@ en `/luma/titles/00040000000BB800/` y el plugin en `/luma/plugins/00040000000BB8
   Celeste con aplazados: 10 llegan con la historia, 8 a la reserva, y la memoria que escribe el plugin es
   igual a la de la CLI. Mark creado por la historia a nivel 5 vuelve a su nivel 25 con su EXP en cuanto
   aparece; «Recuperar jugadores» trae a Kevin con su nivel y sus técnicas.
+- Saltos de los eventos de la traducción 3.0 contra el japonés (`python -m ie123kit.definitiva saltos`): unos
+  768 000 en IE1, IE2 (Fuego y Ventisca), IE3 y Ogro, todos a su sitio. El atasco del sorteo del FFI (#107 de la
+  traducción) ya no está en la base.
 
 ## Pendiente
 
