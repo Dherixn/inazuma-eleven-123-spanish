@@ -134,12 +134,13 @@ namespace Definitiva {
                 }
                 u32 puntos = DireccionPuntos();
                 if (!puntos) {
-                    Aviso("Cuaderno", "«Vuelve con tu equipo del Raimon en el IE1 o el IE2, con la partida cargada.»");
+                    Aviso("Cuaderno", "«Vuelve con tu equipo del Raimon, con la partida cargada.»");
                     return;
                 }
                 u32 *valores = reinterpret_cast<u32 *>(puntos);
                 valores[0] += 500;  // pasión
                 valores[1] += 50;   // amistad
+                OlvidarPuntos();    // que el multiplicador de Pasión y Amistad no lo cuente como ganado
                 gRegaloRaimon = true;
                 Guardar();
                 Aviso("Cuaderno", "Entre las páginas había un sobre del club de fútbol del Raimon:\n\n"

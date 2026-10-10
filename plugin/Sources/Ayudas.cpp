@@ -92,6 +92,9 @@ namespace Definitiva {
                  "Multiplica la EXP que gana cada jugador. El juego sube de nivel al acabar el partido, así que "
                  "parte de lo ganado de más puede notarse en el siguiente.",
                  {{"Normal (x1)", 1}, {"Doble (x2)", 2}, {"Triple (x3)", 3}}, 0, nullptr},
+                {"puntos", "Pasión y Amistad", nullptr,
+                 "Multiplica la Pasión y la Amistad que ganas, las que se gastan en fichar. Lo que gastas no se toca.",
+                 {{"Normal (x1)", 1}, {"Doble (x2)", 2}, {"Triple (x3)", 3}}, 0, nullptr},
                 // La continuidad: la clave sigue siendo «tecnicas» para no perder lo elegido en ajustes.txt.
                 {"tecnicas", "Memoria del equipo", nullptr,
                  "Recuerda en la SD lo que llega a tener cada jugador de tu partida. Quien llega con la historia "
@@ -239,7 +242,8 @@ namespace Definitiva {
                 }
                 if (clasificar) {
                     juego = visto;
-                    CuidarPlantilla(juego, Valor("pept") != 0, static_cast<int>(Valor("exp")), Valor("tecnicas") != 0);
+                    CuidarPlantilla(juego, Valor("pept") != 0, static_cast<int>(Valor("exp")), Valor("tecnicas") != 0,
+                                    static_cast<int>(Valor("puntos")));
                     SecretosPendientes();
                 }
                 if (vuelta % 500 == 0)

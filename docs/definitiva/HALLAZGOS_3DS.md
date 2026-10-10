@@ -131,6 +131,9 @@ esto copia datos del juego al repositorio: son posiciones, tamaños y comportami
 - En la RAM, el juego tiene la cabecera (0x40 B, con su suma bien) en el heap (IE3: 0x087EFA18 en una
   sesión); detrás hay otra cosa, así que el tiempo de juego se lee del archivo.
 - Los registros más allá del recuento no llegan a la RAM: no sirven para guardar datos propios en la partida.
+- Pasión y Amistad: dos u32 en +0x4D4 del archivo (IE2 e IE3). En la RAM del IE3 están en una copia de los
+  datos de la partida en el heap con la misma disposición que el archivo (en una sesión, 0x088092D0: Pasión en
+  +0x4D4 y el identificador de la partida en +0xBA8, que es como se encuentra). Es la copia viva: es la única.
 
 ## Aviso de «datos ilegítimos»
 

@@ -61,7 +61,7 @@ QUÉ TRAE
   (desbloquea lo que en la consola pedía 45 encuentros por StreetPass).
 - Ayudas opcionales (de fábrica, como el original salvo la memoria del equipo): encuentros, velocidad al
   andar, supertécnicas del rival, penaltis de la CPU, precio de venta, fuera de juego, versión (exclusivos
-  de las dos versiones en una partida), PE y PT siempre llenos, experiencia x2/x3.
+  de las dos versiones en una partida), PE y PT siempre llenos, experiencia x2/x3, Pasión y Amistad x2/x3.
 - Copias de seguridad de las partidas antes de cada cambio (en la SD, /Inazuma123Definitiva/partidas).
 - Y algún secreto: dicen que el abuelo Daisuke dejó un cuaderno...
 """

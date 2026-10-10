@@ -57,6 +57,13 @@ namespace Definitiva {
         u32 gCabecera = 0, gCursorCabecera = 0, gPausaCabecera = 0;
         std::vector<u32> gCandidatas;
 
+        // Pasión y amistad (u32 seguidos). IE3 y Ogro: en la copia de los datos de la partida del heap, que lleva el
+        // identificador de la partida en +0xBA8 (como el archivo).
+        constexpr u32 OFF_PUNTOS_DATOS = 0x4D4, OFF_IDENTIFICADOR_DATOS = 0xBA8, TOPE_PUNTOS = 99999;
+        u32 gEspejo = 0, gPausaEspejo = 0;
+        u32 gUltimosPuntos[2] = {};
+        bool gPuntosVistos = false;
+
         // El menú (recuperar técnicas) y el hilo de las ayudas tocan la plantilla y la memoria a la vez.
         struct Cerrojo {
             LightLock cerrojo;
@@ -181,6 +188,8 @@ namespace Definitiva {
         void Olvidar() {
             gBase = 0;
             gMultiplicador.Olvidar();
+            gEspejo = gPausaEspejo = 0;
+            gPuntosVistos = false;
             gCabecera = gCursorCabecera = gPausaCabecera = 0;
             gCandidatas.clear();
             CambiarMemoria(0, 0);
@@ -270,6 +279,75 @@ namespace Definitiva {
                 return;
             }
             gCabecera = mejor;
+        }
+
+        // IE3 y Ogro: la copia de los datos de la partida en el heap, por el identificador en su +0xBA8 (con la
+        // cabecera ya encontrada). Una vuelta entera al heap la primera vez; después solo se comprueba.
+        u32 PuntosIE3() {
+            if (!gCabecera)
+                return 0;
+            u32 partida = U32En(gCabecera + OFF_IDENTIFICADOR);
+            if (gEspejo && TramoLegible(gEspejo + OFF_IDENTIFICADOR_DATOS, 4) == 4
+                && U32En(gEspejo + OFF_IDENTIFICADOR_DATOS) == partida)
+                return gEspejo + OFF_PUNTOS_DATOS;
+            gEspejo = 0;
+            if (gPausaEspejo) {
+                --gPausaEspejo;
+                return 0;
+            }
+            gPausaEspejo = PAUSA_TRAS_VUELTA;
+            for (u32 cursor = 0; cursor < HEAP_LARGO;) {
+                u32 inicio = HEAP + cursor, legible = TramoLegible(inicio, TROZO);
+                for (u32 off = 0; off + 4 <= legible; off += 4) {
+                    u32 dir = inicio + off;
+                    if (U32En(dir) != partida || dir == gCabecera + OFF_IDENTIFICADOR || dir < HEAP + OFF_IDENTIFICADOR_DATOS)
+                        continue;
+                    u32 espejo = dir - OFF_IDENTIFICADOR_DATOS;
+                    if (TramoLegible(espejo + OFF_PUNTOS_DATOS, 8) == 8 && U32En(espejo + OFF_PUNTOS_DATOS) <= TOPE_PUNTOS
+                        && U32En(espejo + OFF_PUNTOS_DATOS + 4) <= TOPE_PUNTOS) {
+                        gEspejo = espejo;
+                        return gEspejo + OFF_PUNTOS_DATOS;
+                    }
+                }
+                if (legible) {
+                    cursor += legible >= TROZO ? TROZO : legible;
+                } else {
+                    MemInfo info;
+                    PageInfo pagina;
+                    u32 salto = R_SUCCEEDED(svcQueryMemory(&info, &pagina, inicio)) ? info.base_addr + info.size - inicio : 0;
+                    cursor += salto ? salto : 0x1000;
+                }
+            }
+            return 0;
+        }
+
+        u32 PuntosDe(JuegoActivo juego) {
+            if (juego == JuegoActivo::IE3 || juego == JuegoActivo::Ogro)
+                return PuntosIE3();
+            s32 distancia = juego == JuegoActivo::IE1 ? -0xCE4 : juego == JuegoActivo::IE2 ? -0xF0C : 0;
+            u32 puntos = distancia && gBase ? static_cast<u32>(static_cast<s32>(gBase) + distancia) : 0;
+            return puntos && Escribible(puntos, 8) ? puntos : 0;
+        }
+
+        // Como el multiplicador de EXP: lo que sube la pasión o la amistad se multiplica (lo que baja, al fichar,
+        // no se toca).
+        void MultiplicarPuntos(JuegoActivo juego, int factor) {
+            u32 dir = PuntosDe(juego);
+            if (!dir || !Escribible(dir, 8)) {
+                gPuntosVistos = false;
+                return;
+            }
+            u32 *puntos = reinterpret_cast<u32 *>(dir);
+            for (u32 k = 0; k < 2; ++k) {
+                u32 ahora = puntos[k];
+                if (gPuntosVistos && ahora > gUltimosPuntos[k] && ahora <= TOPE_PUNTOS) {
+                    u64 nuevo = ahora + static_cast<u64>(ahora - gUltimosPuntos[k]) * static_cast<u64>(factor - 1);
+                    ahora = static_cast<u32>(nuevo > TOPE_PUNTOS ? TOPE_PUNTOS : nuevo);
+                    puntos[k] = ahora;
+                }
+                gUltimosPuntos[k] = ahora;
+            }
+            gPuntosVistos = true;
         }
 
         void EscribirRegistro(u8 *r, const JugadorPartida &j, const FormatoPartida &f) {
@@ -402,8 +480,18 @@ namespace Definitiva {
         return EscribirArchivo(m);
     }
 
+    void OlvidarPuntos() {
+        Bloqueo bloqueo;
+        gPuntosVistos = false;
+    }
+
     u32 DireccionPuntos() {
         JuegoActivo juego = gJuego;
+        if (juego == JuegoActivo::IE3 || juego == JuegoActivo::Ogro) {
+            Bloqueo bloqueo;
+            gPausaEspejo = 0;  // desde el menú se busca ya
+            return PuntosIE3();
+        }
         s32 distancia = juego == JuegoActivo::IE1 ? -0xCE4 : juego == JuegoActivo::IE2 ? -0xF0C : 0;
         if (!distancia)
             return 0;
@@ -434,7 +522,7 @@ namespace Definitiva {
         return Escribible(puntos, 8) ? puntos : 0;
     }
 
-    void CuidarPlantilla(JuegoActivo juego, bool llenarPePt, int factorExp, bool recordar) {
+    void CuidarPlantilla(JuegoActivo juego, bool llenarPePt, int factorExp, bool recordar, int factorPuntos) {
         Bloqueo bloqueo;
         gEstado[1] = static_cast<u32>(juego);
         gEstado[2] = (llenarPePt ? 1 : 0) | static_cast<u32>(factorExp) << 8 | (recordar ? 1u : 0u) << 16;
@@ -445,7 +533,7 @@ namespace Definitiva {
         }
         if (!recordar)
             CambiarMemoria(0, 0);
-        if (juego == JuegoActivo::Ninguno || (!llenarPePt && factorExp <= 1 && !recordar)) {
+        if (juego == JuegoActivo::Ninguno || (!llenarPePt && factorExp <= 1 && !recordar && factorPuntos <= 1)) {
             gJuego = juego;
             Olvidar();
             return;
@@ -477,6 +565,13 @@ namespace Definitiva {
                 gEstado[8] = gPartidaMemoria;
                 gEstado[9] = gCabecera;
                 Aplicar(juego, inf, *t, n, llenarPePt, factorExp, recordar);
+                if (factorPuntos > 1) {
+                    if (juego == JuegoActivo::IE3 || juego == JuegoActivo::Ogro)
+                        BuscarCabecera(juego, inf, n);  // la copia de los datos se reconoce por su identificador
+                    MultiplicarPuntos(juego, factorPuntos);
+                } else {
+                    gPuntosVistos = false;
+                }
                 return;
             }
             Olvidar();  // otra partida, vuelta al título o cambio de juego: se vuelve a buscar

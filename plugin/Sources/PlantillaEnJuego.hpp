@@ -15,7 +15,8 @@ namespace Definitiva {
     // nivel, EXP y técnicas a quien llega con la historia tras un traspaso o vuelve con menos nivel del que tuvo.
     // Se llama unas diez veces por segundo desde el hilo de las ayudas; las búsquedas van a trozos para no frenar
     // el juego.
-    void CuidarPlantilla(JuegoActivo juego, bool llenarPePt, int factorExp, bool recordar);
+    // `factorPuntos` multiplica igual la Pasión y la Amistad que se ganan (las de fichar).
+    void CuidarPlantilla(JuegoActivo juego, bool llenarPePt, int factorExp, bool recordar, int factorPuntos = 1);
 
     struct TecnicasPerdidas {
         uint16_t numero;
@@ -38,9 +39,13 @@ namespace Definitiva {
     bool EscribirMemoriaEquipo(const MemoriaEquipo &m);
 
     // Dirección de la pasión (u32; detrás va la amistad) del juego que corre. En el IE1 y el IE2 está a una
-    // distancia fija de la plantilla (los códigos de Sharkive y Azahar dan lo mismo: -0xCE4 y -0xF0C); en el
-    // IE3 y Ogro no, y entonces es 0, igual que sin partida cargada. Si hace falta, busca la plantilla de una
-    // vez (unos segundos); llamar desde el menú.
+    // distancia fija de la plantilla (los códigos de Sharkive y Azahar dan lo mismo: -0xCE4 y -0xF0C); en el IE3
+    // y Ogro, en la copia de los datos de la partida que el juego tiene en el heap (+0x4D4, como en el archivo),
+    // que se reconoce por el identificador de la partida en su +0xBA8. 0 sin partida cargada. Si hace falta,
+    // busca la plantilla de una vez (unos segundos); llamar desde el menú.
     uint32_t DireccionPuntos();
+
+    // Tras cambiar la pasión o la amistad a mano (regalos): que el multiplicador no lo cuente como ganado.
+    void OlvidarPuntos();
 
 }
