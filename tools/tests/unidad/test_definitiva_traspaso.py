@@ -291,10 +291,9 @@ def test_traspaso_al_ie3_quita_al_fichado_el_equipo_y_las_ordenes_del_capitan():
     ie3.datos[ie3.base + pt.OFF_NUM_GRUPO] = 1  # Paolo en el grupo con la lista vacía, como tras el prólogo
     informe = tr.traspasar(ie2, ie3, {1: 1}, tr.Opciones(modo=tr.COMPLETA))
     reg = ie3.datos[ie3._off_jugador(1):ie3._off_jugador(1) + ie3.formato.jugador_paso]
-    # Sin el equipo ni las órdenes de Paolo; en el IE3 el traspaso deja a los que llegan en la reserva (la
-    # historia forma después Inazuma Japón con sus altas).
+    # Sin el equipo ni las órdenes de Paolo, y en la reserva: el grupo lo forma la historia.
     assert [reg[o] for o in (0x4B, 0x57, 0x58, 0x5A, 0x5B)] == [1, 0, 0, 0, 0x10]
-    assert ie3.grupo_efectivo() == [3170] and informe.al_grupo == []
+    assert ie3.grupo_efectivo() == [3170] and informe.traspasados == [(1, 1)]
     # Un fichaje sí entra (lo elige el jugador), detrás de Paolo, con dorsal y sin sitio.
     op = tr.Opciones(modo=tr.SOLO_FICHAJES, nivel_fichaje=20, exp_de_nivel=lambda n, nv: 100 * nv)
     i = tr.fichar(ie3, 3005, 20, op)
@@ -319,3 +318,39 @@ def test_grupo_efectivo_con_la_lista_vacia_son_los_primeros_registros():
     assert p.grupo_efectivo() == [1]
     assert p.meter_en_grupo(1) and p.grupo_efectivo() == [1, 30]
     assert p.sacar_del_grupo(0) and p.grupo_efectivo() == [30]
+
+
+def test_quien_une_la_historia_llega_con_ella_y_no_se_crea():
+    # La historia no pasa a nadie de la reserva al grupo: a quien va a unir no se le crea ficha.
+    ie2 = _partida("ie2.123", [(1, 40, 20000, [0xA2]), (4, 30, 9000, [0x65]), (2337, 45, 0, [0x105])])
+    ie3 = _partida("ie3.123", [(3170, 30, 2379, [])])
+    ie3.datos[ie3.base + pt.OFF_NUM_GRUPO] = 1
+    op = tr.Opciones(modo=tr.COMPLETA, aplazar=frozenset({1, 2338}), exp_de_nivel=lambda n, nv: 100 * nv,
+                     aprendidas=lambda n, nv: [0x200] if n == 1 else [])
+    informe = tr.traspasar(ie2, ie3, {1: 1, 4: 4, 2337: 2338}, op)
+    assert [(a.origen, a.destino, a.nivel, a.exp) for a in informe.aplazados] == [(1, 1, 40, 4000), (2337, 2338, 45, 4500)]
+    mark = informe.aplazados[0]
+    assert mark.tecnicas[:3] == (0x200, 0xA2, 0) and mark.niveles_tecnica[:3] == (0, 1, 0)
+    # Jim no lo une la historia: llega, a la reserva.
+    assert informe.traspasados == [(4, 4)] and [j.id for j in ie3.jugadores()] == [3170, 4]
+    assert ie3.grupo_efectivo() == [3170]
+
+
+def test_dos_fichas_del_mismo_personaje_que_llega_con_la_historia_se_funden():
+    ie2 = _partida("ie2.123", [(1097, 20, 0, [0x10]), (30, 35, 0, [0x20])])
+    ie3 = _partida("ie3.123", [(3170, 30, 2379, [])])
+    op = tr.Opciones(modo=tr.COMPLETA, aplazar=frozenset({30}), exp_de_nivel=lambda n, nv: 100 * nv,
+                     clave_destino=lambda n: "jude" if n in (30, 1097) else n)
+    informe = tr.traspasar(ie2, ie3, {1097: 30, 30: 30}, op)
+    assert len(informe.aplazados) == 1 and informe.mejorados == [(30, 30)]
+    a = informe.aplazados[0]
+    assert (a.destino, a.nivel, a.exp) == (30, 35, 3500) and a.tecnicas[:3] == (0x10, 0x20, 0)
+    assert ie3.num_jugadores == 1
+
+
+def test_fichar_a_la_reserva():
+    p = _partida("ie2.123", [(n, 10, 5000, []) for n in range(1, 4)])
+    _con_grupo(p, [1, 2, 3], [1, 2, 3])
+    op = tr.Opciones(modo=tr.SOLO_FICHAJES, nivel_fichaje=20, exp_de_nivel=lambda n, nv: 100 * nv)
+    i = tr.fichar(p, 50, 20, op, al_grupo=False)
+    assert 50 not in p.grupo() and p.datos[p._off_jugador(i) + pt.OFF_DORSAL] == 0

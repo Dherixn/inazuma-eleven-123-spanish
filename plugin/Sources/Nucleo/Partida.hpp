@@ -30,6 +30,10 @@ namespace Definitiva {
     constexpr uint32_t OFF_SITIO = 0x58;
     constexpr uint32_t NUM_ESPACIOS = 3;
     constexpr uint32_t CABECERA_LARGO = 0x40;
+    // Identificador del archivo de partida (cabecera): no cambia desde que se crea el archivo, ni con una partida
+    // nueva. Tiempo de juego del espacio (info), en fotogramas: separa una partida nueva de la anterior.
+    constexpr uint32_t OFF_IDENTIFICADOR = 0x20;
+    constexpr uint32_t OFF_TIEMPO = 0x50;
 
     struct Reinicio {
         uint32_t offset;
@@ -54,8 +58,6 @@ namespace Definitiva {
         uint32_t offGrupo;
         // Al entrar en el grupo, la ficha recibe también su sitio en la formación (el IE3 lo deja a 0).
         bool sitioAlEntrar;
-        // El traspaso mete a los que llegan en el grupo si cabe (en el IE3 no: ver partida.py).
-        bool grupoAlTraspasar;
         // Campos de la ficha con su sitio en el equipo que no se heredan al crear una (ver partida.py).
         const Reinicio *reinicio;
         uint32_t numReinicio;
@@ -110,6 +112,8 @@ namespace Definitiva {
         Error Sellar();
 
         uint8_t NumJugadores() const { return datos_[base_ + OFF_NUM_JUGADORES]; }
+        uint32_t Identificador() const { return LeerU32(OFF_IDENTIFICADOR); }
+        uint32_t TiempoDeJuego() const { return LeerU32(base_ + OFF_TIEMPO); }
         JugadorPartida Jugador(uint32_t indice) const;
         Error PonerJugador(uint32_t indice, const JugadorPartida &j);
         Error AnadirJugador(const JugadorPartida &j, uint32_t *indice);

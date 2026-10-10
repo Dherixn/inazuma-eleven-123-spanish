@@ -7,7 +7,9 @@
 #include "Nucleo/DatosDestino.hpp"
 #include "Nucleo/Partida.hpp"
 #include "Nucleo/Traspaso.hpp"
+#include "Ayudas.hpp"
 #include "Partidas.hpp"
+#include "PlantillaEnJuego.hpp"
 #include "Cronica.hpp"
 #include "TablasJuego.hpp"
 
@@ -146,7 +148,8 @@ namespace Definitiva {
             std::vector<Par> pares = EmparejarPorCara(*tablasOrigen, *tablasDestino);
             // La ficha que la historia del juego nuevo vuelve a fichar (Jude, en el IE3, es la 30): sin
             // duplicados cuando lo convoque.
-            if (const std::vector<uint16_t> *altas = AltasDe(destino.juego))
+            const std::vector<uint16_t> *altas = AltasDe(destino.juego);
+            if (altas)
                 pares = PreferirAltas(pares, *tablasDestino, *altas);
             pares = AjustarAiden(pares, elegido->juego, destino.juego);
             Mapa mapa = {pares.data(), pares.size()};
@@ -155,6 +158,8 @@ namespace Definitiva {
             if (!ElegirModo(op))
                 return;
             tablasDestino->Preparar(op);
+            // A quien la historia va a unir no se le crea ficha: llega con ella (Traspaso.hpp).
+            op.aplazar = altas;
 
             std::string copia;
             if (CopiarPartidasASD(gCarpetaCopias, copia) <= 0) {
@@ -166,6 +171,24 @@ namespace Definitiva {
                 Aviso(DescribirError(informe.error));
                 return;
             }
+            // Antes que la partida: sin esto, los que llegan con la historia llegarían sin lo suyo.
+            if (!informe.aplazados.empty()) {
+                MemoriaEquipo memoria = LeerMemoriaEquipo(dest.Identificador(), dest.TiempoDeJuego());
+                for (const Aplazado &a : informe.aplazados) {
+                    Recuerdo r;
+                    r.numero = a.destino;
+                    r.nivel = a.nivel;
+                    r.exp = a.exp;
+                    for (uint32_t k = 0; k < NUM_TECNICAS; ++k)
+                        if (a.tecnicas[k])
+                            r.tecnicas.push_back({a.tecnicas[k], a.nivelesTecnica[k]});
+                    memoria.Esperar(tablasDestino->Clave(a.destino), r);
+                }
+                if (!EscribirMemoriaEquipo(memoria)) {
+                    Aviso("No se ha podido escribir en la SD. No se ha tocado nada.");
+                    return;
+                }
+            }
             if (dest.Sellar() != Error::Ninguno || !EscribirPartida(destino.archivo, dest.Datos())) {
                 Aviso(Utils::Format("No se ha podido guardar. Tu partida sigue como estaba (copia en %s).",
                                     copia.c_str()));
@@ -175,14 +198,11 @@ namespace Definitiva {
             if (*puente)
                 MessageBox("Capítulo siguiente", Ajustar(puente))();
             // Corto: el cuadro tiene ocho líneas y la ruta de la copia ya ocupa dos.
-            std::string donde = destino.formato->grupoAlTraspasar
-                                    ? Utils::Format("%u al grupo y el resto a la reserva",
-                                                    static_cast<unsigned>(informe.alGrupo.size()))
-                                    : std::string("a la reserva: la historia convoca a los suyos; los demás, "
-                                                  "con Grupo y reserva");
-            Aviso(Utils::Format("Llegan %u nuevos (%s) y %u conocidos mejoran.\nCopia: %s\n\n"
-                                "Sal al título SIN GUARDAR y pulsa Continuar.",
-                                static_cast<unsigned>(informe.traspasados.size()), donde.c_str(),
+            Aviso(Utils::Format("%u llegarán con la historia, con su nivel%s; %u van a la reserva y %u mejoran.\n"
+                                "Copia: %s\n\nSal al título SIN GUARDAR y pulsa Continuar.",
+                                static_cast<unsigned>(informe.aplazados.size()),
+                                MemoriaDelEquipoActiva() ? "" : " (activa Memoria del equipo)",
+                                static_cast<unsigned>(informe.traspasados.size()),
                                 static_cast<unsigned>(informe.mejorados.size()), copia.c_str()));
         }
 

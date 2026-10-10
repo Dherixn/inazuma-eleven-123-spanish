@@ -1,5 +1,6 @@
 #include "Traspaso.hpp"
 
+#include <algorithm>
 #include <map>
 
 namespace Definitiva {
@@ -101,6 +102,7 @@ namespace Definitiva {
             posicion[clave(destino.Jugador(k).id)] = k;  // como el dict de Python: gana la última
         const bool hayPlantilla = destino.NumJugadores() > 0;
         const std::vector<uint8_t> plantilla = hayPlantilla ? destino.Jugador(0).crudo : std::vector<uint8_t>();
+        std::map<uint32_t, size_t> aplazadoDe;
 
         for (uint32_t i = 0; i < origen.NumJugadores(); ++i) {
             JugadorPartida j = origen.Jugador(i);
@@ -126,7 +128,27 @@ namespace Definitiva {
                 informe.mejorados.push_back({j.id, numeroDestino});
                 continue;
             }
+            auto yaLlega = aplazadoDe.find(clave(numeroDestino));
+            if (yaLlega != aplazadoDe.end()) {
+                // Otra ficha del mismo personaje que ya llega con la historia: se funden.
+                Aplazado &a = informe.aplazados[yaLlega->second];
+                NivelYExp(j, a.destino, op, &nivel, &exp);
+                Anadir(a.tecnicas, a.nivelesTecnica, Heredadas(op, a.destino, nivel > a.nivel ? nivel : a.nivel, j));
+                if (nivel > a.nivel || (nivel == a.nivel && exp > a.exp)) {
+                    a.nivel = nivel;
+                    a.exp = exp;
+                }
+                informe.mejorados.push_back({j.id, numeroDestino});
+                continue;
+            }
             NivelYExp(j, numeroDestino, op, &nivel, &exp);
+            if (op.aplazar && std::binary_search(op.aplazar->begin(), op.aplazar->end(), numeroDestino)) {
+                Aplazado a = {j.id, numeroDestino, nivel, exp, {}, {}};
+                Anadir(a.tecnicas, a.nivelesTecnica, Heredadas(op, numeroDestino, nivel, j));
+                aplazadoDe.emplace(clave(numeroDestino), informe.aplazados.size());
+                informe.aplazados.push_back(a);
+                continue;
+            }
             if (destino.NumJugadores() >= destino.Formato()->maxJugadores) {
                 informe.sinSitio.push_back(j.id);
                 continue;
@@ -151,14 +173,12 @@ namespace Definitiva {
             destino.AnadirJugador(ficha, &indice);
             posicion.emplace(clave(numeroDestino), indice);
             informe.traspasados.push_back({j.id, numeroDestino});
-            if (destino.Formato()->grupoAlTraspasar && destino.MeterEnGrupo(indice))
-                informe.alGrupo.push_back(numeroDestino);
         }
         return informe;
     }
 
     Fichaje Fichar(Partida &destino, uint16_t numero, uint8_t nivel, const Opciones &op,
-                   const std::vector<uint8_t> *plantilla, uint32_t *indice) {
+                   const std::vector<uint8_t> *plantilla, uint32_t *indice, bool alGrupo) {
         if (!op.expDeNivel)
             return Fichaje::OpcionesIncompletas;
         auto clave = [&op](uint16_t n) -> uint32_t { return op.clave ? op.clave(n, op.contexto) : n; };
@@ -179,7 +199,8 @@ namespace Definitiva {
         uint32_t i;
         if (destino.AnadirJugador(ficha, &i) != Error::Ninguno)
             return Fichaje::SinSitio;
-        destino.MeterEnGrupo(i);
+        if (alGrupo)
+            destino.MeterEnGrupo(i);
         if (indice)
             *indice = i;
         return Fichaje::Hecho;

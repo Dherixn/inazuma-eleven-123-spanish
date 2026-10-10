@@ -112,7 +112,8 @@ def informe_python(inf: tr.Informe) -> list[str]:
     return [pares("traspasados", inf.traspasados), pares("mejorados", inf.mejorados),
             ids("sin_pareja", inf.sin_pareja), ids("sin_sitio", inf.sin_sitio),
             ids("sin_plantilla", inf.sin_plantilla), ids("con_plantilla", inf.con_plantilla),
-            ids("al_grupo", inf.al_grupo)]
+            " ".join(["aplazados"] + [f"{a.origen}>{a.destino}:{a.nivel}:{a.exp}:" + "/".join(
+                f"{t}.{n}" for t, n in zip(a.tecnicas, a.niveles_tecnica, strict=True)) for a in inf.aplazados])]
 
 
 def main() -> int:
@@ -128,9 +129,13 @@ def main() -> int:
         for nombre, origen, destino, modo, nivel, mapa, tabla in casos(a.casos, rnd):
             (tmp / f"{nombre}.o").write_bytes(origen.sellar())
             (tmp / f"{nombre}.d").write_bytes(destino.sellar())
+            # Altas de la historia: a veces ninguna, a veces una parte de los números de destino.
+            valores = sorted(set(tabla.values()))
+            aplazar = sorted(rnd.sample(valores, rnd.choice([0, len(valores) // 10, len(valores) // 3])))
             op = tr.Opciones(modo=modo, nivel_tope=nivel if modo == tr.EQUILIBRADA else None,
                              nivel_fichaje=nivel if modo == tr.SOLO_FICHAJES else None,
-                             exp_de_nivel=exp_prueba, aprendidas=aprendidas_prueba, clave_destino=lambda n: n // 3)
+                             exp_de_nivel=exp_prueba, aprendidas=aprendidas_prueba, clave_destino=lambda n: n // 3,
+                             aplazar=frozenset(aplazar) or None)
             # Fichaje especial sobre la misma partida de destino: a veces de alguien que ya está.
             ids_destino = [j.id for j in destino.jugadores()]
             numero = rnd.choice(ids_destino) if ids_destino and rnd.random() < 0.3 else rnd.randint(1, 3000)
@@ -148,7 +153,8 @@ def main() -> int:
             inf = tr.traspasar(origen, destino, tabla, op)
             esperado[nombre] = (informe_python(inf), destino.sellar())
             rel = f"pruebas/{tmp.name}/{nombre}"
-            ordenes.append(f"/tmp/tp {rel}.o {rel}.d {rel}.s {modo} {nivel} {mapa} > {rel}.txt")
+            lista_aplazar = "aplazar:" + ",".join(map(str, aplazar)) if aplazar else "-"
+            ordenes.append(f"/tmp/tp {rel}.o {rel}.d {rel}.s {modo} {nivel} {mapa} {lista_aplazar} > {rel}.txt")
         (tmp / "correr.sh").write_text("\n".join(ordenes) + "\n", encoding="utf-8", newline="\n")
         r = subprocess.run(["docker", "run", "--rm", "-v", f"{PLUGIN}:/plugin", IMAGEN, "bash",
                             f"pruebas/{tmp.name}/correr.sh"], capture_output=True, text=True, check=False)

@@ -16,7 +16,7 @@ namespace Definitiva {
 
         // En la información de cada espacio (desde su comienzo): tiempo en fotogramas a 60 por segundo, episodio
         // y nivel de equipo. Comprobado con partidas de 6 y 35 minutos y con la ficha que enseña el juego.
-        constexpr u32 OFF_TIEMPO = 0x50, OFF_EPISODIO = 0x54, OFF_NIVEL_EQUIPO = 0x55;
+        constexpr u32 OFF_EPISODIO = 0x54, OFF_NIVEL_EQUIPO = 0x55;  // el tiempo, OFF_TIEMPO (Partida.hpp)
 
         struct Temporada {
             const char *titulo;

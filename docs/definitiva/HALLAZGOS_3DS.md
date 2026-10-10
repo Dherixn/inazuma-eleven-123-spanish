@@ -82,6 +82,31 @@ esto copia datos del juego al repositorio: son posiciones, tamaños y comportami
   las escenas.
 - Varios personajes tienen varias fichas jugables; la historia solo ficha una (IE3: Jude 30, no 1097; Shawn
   2338; Caleb 3005; Nathan 2 y Kevin 11, no sus 24xx). El traspaso usa la que ficha la historia.
+- Lo que hacen 16446 y 16447, medido en Azahar cambiando las bajas del arranque del IE3 (evento 31010000) por
+  altas y bajas de prueba:
+  - Un alta de alguien que ya está no hace nada: no lo duplica, no le cambia el nivel (Paolo a 50 sigue a 50
+    tras el alta de la historia a nivel 30) y **no lo pasa de la reserva al grupo**, aunque haya hueco.
+  - Un alta de alguien nuevo lo crea con el nivel del alta y entra en el grupo si cabe (16); si no, a la
+    reserva.
+  - Una baja **borra el registro**: si la historia lo vuelve a unir, llega nuevo (Kevin a 40, baja y alta a 7:
+    queda a 7).
+  - Una partida nueva del IE3 trae a Raimon (1 a 12, nivel 1), y las bajas del arranque los quitan.
+  - Consecuencia para el traspaso: quien la historia va a unir no se crea (se quedaría en la reserva y el
+    grupo, corto o vacío: tras el prólogo del IE3 la historia quita a Paolo y Héctor y une a Mark). Se apunta
+    en la memoria del equipo y el plugin le devuelve lo suyo cuando la historia lo crea.
+- Bajas de la historia del IE3: en la selección (32011850) Kevin, Max, David, Marvin, Shadow e Isaac; tras
+  Corea (32041600) Shawn y Jordan (Shawn vuelve después); en 32070100, Tod.
+
+## Identificar una partida
+
+- Cabecera del archivo, +0x20: un identificador de 32 bits que no cambia desde que se crea el archivo (ni con
+  una partida nueva encima: se probó). Distinto en cada archivo (Rayo Celeste, Fuego Explosivo y Ogro tienen
+  el suyo); el IE1 lleva sus tres espacios en un archivo, con uno solo.
+- Info del espacio, +0x0C (archivo 0x50 en el espacio 1): tiempo de juego en fotogramas a 60 por segundo.
+  Una partida nueva sobre el mismo archivo lo hace bajar.
+- En la RAM, el juego tiene la cabecera (0x40 B, con su suma bien) en el heap (IE3: 0x087EFA18 en una
+  sesión); detrás hay otra cosa, así que el tiempo de juego se lee del archivo.
+- Los registros más allá del recuento no llegan a la RAM: no sirven para guardar datos propios en la partida.
 
 ## Aviso de «datos ilegítimos»
 

@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <map>
+#include <set>
 
 #include "Nucleo/NombreSjis.hpp"
 #include "Nucleo/Texto.hpp"
@@ -12,6 +13,7 @@
 #include "Nucleo/Partida.hpp"
 #include "Nucleo/Traspaso.hpp"
 #include "Partidas.hpp"
+#include "PlantillaEnJuego.hpp"
 #include "TablasJuego.hpp"
 
 using namespace CTRPluginFramework;
@@ -430,6 +432,88 @@ namespace Definitiva {
 
     }
 
+    namespace {
+
+        // Las bajas de la historia borran al jugador (Kevin, Max y David, al no entrar en la selección del IE3): vuelve
+        // a la reserva con lo que tenía según la memoria del equipo de esa partida.
+        void RecuperarJugadores(MenuEntry *) {
+            Elegida e;
+            std::vector<u8> datos;
+            if (!ElegirPartida(e, datos))
+                return;
+            Partida partida;
+            const JuegoDatos *t = TablasDe(e.tablas, *e.perfil);
+            if (!partida.Cargar(datos, e.formato, e.espacio) || !t) {
+                Aviso("No se han podido leer la partida o las tablas del juego.");
+                return;
+            }
+            MemoriaEquipo memoria = LeerMemoriaEquipo(partida.Identificador(), partida.TiempoDeJuego());
+            std::set<uint32_t> estan;
+            for (uint32_t k = 0; k < partida.NumJugadores(); ++k)
+                estan.insert(t->Clave(partida.Jugador(k).id));
+            std::vector<uint32_t> claves;
+            std::vector<std::string> opciones;
+            for (const auto &kv : memoria.Todo()) {
+                const Recuerdo &r = kv.second;
+                int ficha = r.numero ? t->Ficha(r.numero) : -1;
+                if (estan.count(kv.first) || ficha < 0 || !t->Jugable(static_cast<size_t>(ficha)) || opciones.size() == 30)
+                    continue;
+                claves.push_back(kv.first);
+                // Corto: la lista corta hacia los 30 caracteres.
+                opciones.push_back(Utils::Format("%s (%u%s)", NombreDeJugador(e.tablas, *e.perfil, r.numero).c_str(),
+                                                 r.nivel, r.pendiente ? ", historia" : ""));
+            }
+            if (opciones.empty()) {
+                Aviso(memoria.Vacia() ? "La memoria del equipo de esta partida está vacía: se llena jugando con "
+                                        "«Memoria del equipo» activa (Ayudas)."
+                                      : "No falta nadie: todos los que recuerda la memoria del equipo están en tu partida.");
+                return;
+            }
+            Keyboard lista(Ajustar("¿Quién vuelve? Llega a la reserva. Entre paréntesis, su nivel; «historia», si aún "
+                                   "tiene que llegar con ella."),
+                           opciones);
+            int eleccion = lista.Open();
+            if (eleccion < 0)
+                return;
+            uint32_t clave = claves[static_cast<size_t>(eleccion)];
+            Recuerdo r = *memoria.Buscar(clave);
+            std::string nombre = NombreDeJugador(e.tablas, *e.perfil, r.numero);
+            if (r.pendiente && !Preguntar(nombre + " llega con la historia más adelante. Si lo traes ya, cuando la historia "
+                                                   "lo una no pasará de la reserva al grupo. ¿Traerlo ya?"))
+                return;
+
+            Opciones op;
+            t->Preparar(op);
+            std::string copia;
+            if (CopiarPartidasASD(gCarpetaCopias, copia) <= 0) {
+                Aviso("No se ha podido hacer la copia de seguridad en la SD. No se ha tocado nada.");
+                return;
+            }
+            uint32_t indice = 0;
+            Fichaje f = Fichar(partida, r.numero, r.nivel ? r.nivel : 1, op, nullptr, &indice, false);
+            if (f != Fichaje::Hecho) {
+                Aviso(f == Fichaje::SinSitio ? "No cabe nadie más en el equipo." : "No se ha podido traer.");
+                return;
+            }
+            JugadorPartida j = partida.Jugador(indice);
+            Recuerdo todo = r;
+            todo.pendiente = true;  // su EXP y sus técnicas, además del nivel
+            Restaurar(j, todo);
+            partida.PonerJugador(indice, j);
+            if (partida.Sellar() != Error::Ninguno || !EscribirPartida(e.archivo, partida.Datos())) {
+                Aviso(Utils::Format("No se ha podido guardar. Tu partida sigue como estaba (copia en %s).", copia.c_str()));
+                return;
+            }
+            memoria.Apuntar(clave, j.id, j.nivel, j.exp, j.tecnicas, e.formato->tecnicasU8 ? nullptr : j.nivelesTecnica,
+                            NUM_TECNICAS);
+            EscribirMemoriaEquipo(memoria);
+            Aviso(Utils::Format("%s vuelve con nivel %u, a la reserva (al grupo, con Grupo y reserva).\nCopia: %s\n\n"
+                                "Sal al título de %s SIN GUARDAR y pulsa Continuar.",
+                                nombre.c_str(), j.nivel, copia.c_str(), e.nombre));
+        }
+
+    }
+
     MenuFolder *CrearMenuFichajes(const char *carpetaCopias) {
         gCarpetaCopias = carpetaCopias;
         MenuFolder *carpeta = new MenuFolder("Fichajes especiales", "Jugadores que el juego original no deja fichar.");
@@ -448,6 +532,10 @@ namespace Definitiva {
                                   Ajustar("Pasa a un jugador de la reserva al grupo (los 16 que juegan) y, si está "
                                           "lleno, elige quién sale. El menú del juego no lo deja hacer al principio "
                                           "del IE2 y del IE3."));
+        *carpeta += new MenuEntry("Recuperar jugadores", nullptr, RecuperarJugadores,
+                                  Ajustar("Vuelven, con su nivel y sus técnicas, los jugadores que la historia se ha "
+                                          "llevado (en el IE3, Kevin, Max y David al no entrar en la selección). "
+                                          "Usa lo que apunta «Memoria del equipo» (Ayudas)."));
         return carpeta;
     }
 

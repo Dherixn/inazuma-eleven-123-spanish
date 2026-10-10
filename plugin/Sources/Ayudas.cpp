@@ -88,11 +88,12 @@ namespace Definitiva {
                  "Multiplica la EXP que gana cada jugador. El juego sube de nivel al acabar el partido, así que "
                  "parte de lo ganado de más puede notarse en el siguiente.",
                  {{"Normal (x1)", 1}, {"Doble (x2)", 2}, {"Triple (x3)", 3}}, 0, nullptr},
-                // No cambia nada del juego: solo apunta en la SD, para «Recuperar técnicas perdidas» (#13).
-                {"tecnicas", "Memoria de técnicas", nullptr,
-                 "Apunta en la SD las técnicas que llega a saber cada jugador. No cambia nada del juego: sirve para "
-                 "devolvérselas con «Recuperar técnicas perdidas» si la historia se las quita (en el IE3, Shawn y "
-                 "Jordan vuelven tras el partido contra Corea sin sus técnicas de manual).",
+                // La continuidad: la clave sigue siendo «tecnicas» para no perder lo elegido en ajustes.txt.
+                {"tecnicas", "Memoria del equipo", nullptr,
+                 "Recuerda en la SD lo que llega a tener cada jugador de tu partida. Quien llega con la historia "
+                 "después de traer tu equipo recupera su nivel y sus técnicas, y quien la historia se lleva y vuelve "
+                 "a traer vuelve como se fue (en el IE3, Shawn tras el partido contra Corea). A los que la historia "
+                 "no trae de vuelta, «Recuperar jugadores» (Fichajes especiales).",
                  {{"Sí", 1}, {"No", 0}}, 0, nullptr},
             };
             return lista;
@@ -278,7 +279,7 @@ namespace Definitiva {
         void RecuperarTecnicas(MenuEntry *) {
             const char *titulo = "Recuperar técnicas";
             if (Valor("tecnicas") == 0) {
-                MessageBox(titulo, Ajustar("Activa antes «Memoria de técnicas»: sin ella no se apunta nada."))();
+                MessageBox(titulo, Ajustar("Activa antes «Memoria del equipo»: sin ella no se apunta nada."))();
                 return;
             }
             const PerfilJuego *perfil = nullptr;
@@ -337,8 +338,11 @@ namespace Definitiva {
         threadCreate(Bucle, nullptr, 0x8000, 0x1A, -2, true);
     }
 
+    bool MemoriaDelEquipoActiva() { return Valor("tecnicas") != 0; }
+
     MenuFolder *CrearMenuAyudas() {
-        MenuFolder *carpeta = new MenuFolder("Ayudas", "Opcionales y reversibles: de fábrica, todo como el juego original.\n"
+        MenuFolder *carpeta = new MenuFolder("Ayudas", "Opcionales y reversibles: de fábrica, como el juego original\n"
+                                                       "salvo la memoria del equipo (la continuidad).\n"
                                                        "Se guardan en la SD (/Inazuma123Definitiva/ajustes.txt).");
         for (Ayuda &a : Lista()) {
             std::string nota = a.nota;
@@ -349,7 +353,7 @@ namespace Definitiva {
         }
         *carpeta += new MenuEntry("Recuperar técnicas perdidas", nullptr, RecuperarTecnicas,
                                   Ajustar("Devuelve a tus jugadores las técnicas que sabían y han perdido (lo que "
-                                          "apuntó «Memoria de técnicas»). Lo eliges tú, jugador a jugador."));
+                                          "apuntó «Memoria del equipo»). Lo eliges tú, jugador a jugador."));
         return carpeta;
     }
 

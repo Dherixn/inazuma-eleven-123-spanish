@@ -2,7 +2,8 @@
 
     python -m ie123kit.definitiva identidades --ie1 DIR --ie2 DIR --ie3 DIR -o salida.csv
     python -m ie123kit.definitiva traspasar --logica DIR --origen ina1_save.dat --destino ina2F_save.dat \
-        [--espacio-origen 1] [--modo completa|equilibrada|solo_fichajes] [--nivel N] -o salida.dat
+        [--espacio-origen 1] [--modo completa|equilibrada|solo_fichajes] [--nivel N] [--memoria SD/Inazuma123Definitiva] \
+        -o salida.dat
     python -m ie123kit.definitiva construir --base archive.fa_traducido -o archive.fa
     python -m ie123kit.definitiva paquete --mod .../load/mods/00040000000BB800 --plugin Definitiva-release.3gx -o dist/X
 
@@ -16,6 +17,7 @@ from __future__ import annotations
 import argparse
 import csv
 import sys
+import zlib
 from collections import Counter
 from pathlib import Path
 
@@ -102,14 +104,42 @@ def _traspasar(args: argparse.Namespace) -> int:
         exp_de_nivel=datos.exp_minima,
         aprendidas=datos.aprendidas,
         clave_destino=datos.personaje,
+        # A quien la historia va a unir no se le crea ficha: llega con ella (traspaso.py).
+        aplazar=frozenset(altas) or None,
     )
     informe = traspaso.traspasar(origen, destino, mapa, op)
+    if informe.aplazados and args.memoria:
+        _esperar(Path(args.memoria), destino, informe.aplazados, datos)
     Path(args.salida).write_bytes(destino.sellar())
     nombre = lambda numero: jug_d[datos.ficha(numero)].identidad.nombre
-    print(f"traspasados {len(informe.traspasados)}: {[nombre(b) for _, b in informe.traspasados]}")
+    print(f"traspasados {len(informe.traspasados)} (a la reserva): {[nombre(b) for _, b in informe.traspasados]}")
+    print(f"llegan con la historia {len(informe.aplazados)}: {[nombre(a.destino) for a in informe.aplazados]}")
+    if informe.aplazados and not args.memoria:
+        print("aviso: sin --memoria, los que llegan con la historia llegarán sin lo que traen (el plugin se lo "
+              "devuelve con el equipo_XXXXXXXX.txt de la carpeta Inazuma123Definitiva de la SD)")
     print(f"mejorados {len(informe.mejorados)}; sin pareja {informe.sin_pareja}; sin sitio {informe.sin_sitio}")
     print(f"escrito: {args.salida}")
     return 0
+
+
+def _esperar(carpeta: Path, destino: partida.Partida, aplazados, datos) -> None:
+    """Apunta en la memoria del equipo de la partida de destino a los que llegan con la historia (como el plugin:
+    PlantillaEnJuego.cpp, LeerArchivo; una memoria de una partida anterior sobre el mismo archivo se aparta)."""
+    from ie123kit.definitiva.memoria_equipo import MemoriaEquipo, Recuerdo
+
+    ruta = carpeta / f"equipo_{destino.identificador:08X}.txt"
+    memoria = MemoriaEquipo.cargar(ruta.read_text(encoding="utf-8")) if ruta.is_file() else MemoriaEquipo()
+    if memoria.tiempo > destino.tiempo_de_juego:
+        ruta.replace(ruta.with_name(ruta.name + ".anterior"))
+        memoria = MemoriaEquipo()
+    memoria.partida, memoria.tiempo = destino.identificador, max(memoria.tiempo, destino.tiempo_de_juego)
+    for a in aplazados:
+        tecnicas = [(t, n) for t, n in zip(a.tecnicas, a.niveles_tecnica, strict=True) if t]
+        memoria.esperar(zlib.crc32(datos.personaje(a.destino)) & 0xFFFFFFFF,
+                        Recuerdo(numero=a.destino, nivel=a.nivel, exp=a.exp, tecnicas=tecnicas))
+    carpeta.mkdir(parents=True, exist_ok=True)
+    ruta.write_text(memoria.serializar(), encoding="utf-8", newline="\n")
+    print(f"memoria del equipo: {ruta}")
 
 
 def _construir(args: argparse.Namespace) -> int:
@@ -156,6 +186,7 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--nivel", type=int)
     t.add_argument("--juego-origen", help="carpeta del juego de origen si no es la de su formato (inazuma3_ogre)")
     t.add_argument("--juego-destino", help="carpeta del juego de destino si no es la de su formato (inazuma3_ogre)")
+    t.add_argument("--memoria", help="carpeta Inazuma123Definitiva de la SD: ahí apunta a los que llegan con la historia")
     t.add_argument("-o", "--salida", required=True)
     t.set_defaults(func=_traspasar)
     c = sub.add_parser("construir", help="archive.fa de la edición definitiva sobre el de la traducción")

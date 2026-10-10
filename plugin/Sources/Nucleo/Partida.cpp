@@ -11,12 +11,11 @@ namespace Definitiva {
         const Reinicio REINICIO_IE3[] = {{0x4B, 1}, {0x57, 0}, {0x58, 0}, {0x5A, 0}, {0x5B, 0x10}};
     }
 
-    const FormatoPartida FORMATO_IE1 = {"ie1.123", 0x54C0, 0x79C, 0x60, false, 32, 3, 0x3E, true, 0, true, true,
-                                        nullptr, 0};
+    const FormatoPartida FORMATO_IE1 = {"ie1.123", 0x54C0, 0x79C, 0x60, false, 32, 3, 0x3E, true, 0, true, nullptr, 0};
     const FormatoPartida FORMATO_IE2 = {"ie2.123", 0x7DC0, 0x1268, 0x70, true, MAX_JUGADORES, 1, 0x4A, false,
-                                        0x1268 + MAX_JUGADORES * 0x70 + 0x40, true, true, REINICIO_IE2, 4};
+                                        0x1268 + MAX_JUGADORES * 0x70 + 0x40, true, REINICIO_IE2, 4};
     const FormatoPartida FORMATO_IE3 = {"ie3.123", 0x5940, 0x11B0, 0x6C, true, MAX_JUGADORES, 1, 0x4A, false,
-                                        0x11B0 + MAX_JUGADORES * 0x6C + 0x5E, false, false, REINICIO_IE3, 5};
+                                        0x11B0 + MAX_JUGADORES * 0x6C + 0x5E, false, REINICIO_IE3, 5};
 
     const char *DescribirError(Error e) {
         switch (e) {

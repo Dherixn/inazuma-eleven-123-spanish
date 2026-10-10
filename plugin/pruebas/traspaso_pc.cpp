@@ -1,6 +1,6 @@
 // Ejecuta en el PC el mismo traspaso que el plugin, para compararlo con la versión de Python.
 //
-//   traspaso_pc ORIGEN DESTINO SALIDA MODO [TOPE|FICHAJE] [MAPA]
+//   traspaso_pc ORIGEN DESTINO SALIDA MODO [TOPE|FICHAJE] [MAPA] [aplazar:A,B,C]
 //
 // MODO: completa | equilibrada | solo_fichajes.  MAPA: lista:A=B,C=D
 // Datos de destino de prueba (iguales en comparar.py): EXP = 100·nivel² + número; técnicas por nivel
@@ -108,6 +108,20 @@ int main(int argc, char **argv) {
         mapa = {lista.data(), lista.size()};
     }
 
+    std::vector<uint16_t> aplazar;
+    std::string nombreAplazar = argc > 7 ? argv[7] : "";
+    if (nombreAplazar.rfind("aplazar:", 0) == 0) {
+        std::string resto = nombreAplazar.substr(8);
+        for (size_t pos = 0; pos < resto.size();) {
+            size_t coma = resto.find(',', pos);
+            aplazar.push_back(static_cast<uint16_t>(std::atoi(resto.substr(pos, coma - pos).c_str())));
+            if (coma == std::string::npos) break;
+            pos = coma + 1;
+        }
+        std::sort(aplazar.begin(), aplazar.end());
+        op.aplazar = &aplazar;
+    }
+
     Informe inf = Traspasar(origen, destino, mapa, op);
     if (inf.error != Error::Ninguno) {
         std::printf("error %s\n", DescribirError(inf.error));
@@ -124,7 +138,13 @@ int main(int argc, char **argv) {
     Lista("sin_sitio", inf.sinSitio);
     Lista("sin_plantilla", inf.sinPlantilla);
     Lista("con_plantilla", inf.conPlantilla);
-    Lista("al_grupo", inf.alGrupo);
+    std::printf("aplazados");
+    for (const Aplazado &a : inf.aplazados) {
+        std::printf(" %u>%u:%u:%lu:", a.origen, a.destino, a.nivel, static_cast<unsigned long>(a.exp));
+        for (uint32_t k = 0; k < NUM_TECNICAS; ++k)
+            std::printf("%s%u.%u", k ? "/" : "", a.tecnicas[k], a.nivelesTecnica[k]);
+    }
+    std::printf("\n");
     FILE *f = std::fopen(argv[3], "wb");
     std::fwrite(destino.Datos().data(), 1, destino.Datos().size(), f);
     std::fclose(f);

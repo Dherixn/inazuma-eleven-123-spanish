@@ -20,11 +20,16 @@ Si el jugador ya está en la partida de destino, se queda con lo mejor de los do
 los huecos de técnica vacíos rellenos. «Ya está» se decide por el **personaje** (``clave_destino``,
 p. ej. ``DatosJuego.personaje``): uno puede tener varias fichas en un juego con caras distintas (el IE2
 tiene a Jude del Royal y a Jude del Raimon) y así no se duplica.
+
+Quien no está y la historia del juego nuevo va a unir al equipo (``aplazar``, sus altas) no se crea: si
+estuviera, la historia no lo pasaría de la reserva al grupo. Sale en ``Informe.aplazados`` con lo que trae y
+el plugin se lo devuelve cuando la historia lo une (``memoria_equipo``). El resto llega a la reserva: el grupo
+lo forma la historia.
 """
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from ie123kit.definitiva.partida import NUM_TECNICAS, JugadorPartida, Partida, normalizar_ficha_nueva
 
@@ -45,6 +50,20 @@ class Opciones:
     aprendidas: Callable[[int, int], Sequence[int]] | None = None
     # id del jugador en el juego de destino -> clave del personaje. Sin ella, «ya está» va por el id.
     clave_destino: Callable[[int], object] | None = None
+    # ids de destino que la historia une al equipo (sus altas): quien no esté llega con ella (``aplazados``).
+    aplazar: frozenset[int] | None = None
+
+
+@dataclass(frozen=True)
+class Aplazado:
+    """Un jugador que llega con la historia: lo que trae, ya en el juego de destino."""
+
+    origen: int
+    destino: int
+    nivel: int
+    exp: int
+    tecnicas: tuple[int, ...]
+    niveles_tecnica: tuple[int, ...]
 
 
 @dataclass
@@ -55,8 +74,7 @@ class Informe:
     sin_sitio: list[int] = field(default_factory=list)
     sin_plantilla: list[int] = field(default_factory=list)
     con_plantilla: list[int] = field(default_factory=list)
-    # Números de destino de los traspasados que han entrado en el grupo (los demás, a la reserva).
-    al_grupo: list[int] = field(default_factory=list)
+    aplazados: list[Aplazado] = field(default_factory=list)
 
 
 def exp_minima(curvas: list[list[int]], curva: int, nivel: int) -> int:
@@ -123,11 +141,13 @@ class FichajeError(ValueError):
         self.motivo = motivo
 
 
-def fichar(destino: Partida, numero: int, nivel: int, op: Opciones, plantilla: bytes | None = None) -> int:
+def fichar(destino: Partida, numero: int, nivel: int, op: Opciones, plantilla: bytes | None = None,
+           al_grupo: bool = True) -> int:
     """Fichaje especial (Aiden Froste): jugador nuevo con ese nivel, su EXP mínima y las técnicas de su nivel.
 
     Los campos sin interpretar salen de ``plantilla`` (un jugador de la misma partida; por defecto, el
-    primero). Devuelve su posición en la partida. Gemelo de ``Fichar`` (plugin/Sources/Nucleo/Traspaso.cpp).
+    primero). Entra en el grupo si cabe (``al_grupo``) o en la reserva. Devuelve su posición en la partida.
+    Gemelo de ``Fichar`` (plugin/Sources/Nucleo/Traspaso.cpp).
     """
     if op.exp_de_nivel is None:
         raise FichajeError("opciones")
@@ -147,7 +167,8 @@ def fichar(destino: Partida, numero: int, nivel: int, op: Opciones, plantilla: b
                            niveles_tecnica=tuple(niveles), nivel=nivel,
                            crudo=normalizar_ficha_nueva(molde, destino.formato))
     indice = destino.anadir_jugador(ficha)
-    destino.meter_en_grupo(indice)
+    if al_grupo:
+        destino.meter_en_grupo(indice)
     return indice
 
 
@@ -164,6 +185,7 @@ def traspasar(origen: Partida, destino: Partida, mapa_ids: Mapping[int, int] | N
     clave = op.clave_destino or (lambda id_: id_)
     posicion = {clave(j.id): k for k, j in enumerate(destino_jugadores)}
     plantilla = destino_jugadores[0].crudo if destino_jugadores else None
+    aplazado_de = {}
 
     for j in origen.jugadores():
         id_destino = j.id if mapa_ids is None else mapa_ids.get(j.id)
@@ -179,7 +201,25 @@ def traspasar(origen: Partida, destino: Partida, mapa_ids: Mapping[int, int] | N
             destino.poner_jugador(k, _fundir(actual, nivel, exp, nuevas))
             informe.mejorados.append((j.id, id_destino))
             continue
+        if clave(id_destino) in aplazado_de:
+            # Otra ficha del mismo personaje que ya llega con la historia: se funden.
+            k = aplazado_de[clave(id_destino)]
+            a = informe.aplazados[k]
+            nivel, exp = _nivel_y_exp(j, a.destino, op)
+            tecnicas, niveles = list(a.tecnicas), list(a.niveles_tecnica)
+            _anadir_tecnicas(tecnicas, niveles, _tecnicas_heredadas(op, a.destino, max(nivel, a.nivel), j))
+            if (nivel, exp) > (a.nivel, a.exp):
+                a = replace(a, nivel=nivel, exp=exp)
+            informe.aplazados[k] = replace(a, tecnicas=tuple(tecnicas), niveles_tecnica=tuple(niveles))
+            informe.mejorados.append((j.id, id_destino))
+            continue
         nivel, exp = _nivel_y_exp(j, id_destino, op)
+        if op.aplazar and id_destino in op.aplazar:
+            tecnicas, niveles = [0] * NUM_TECNICAS, [0] * NUM_TECNICAS
+            _anadir_tecnicas(tecnicas, niveles, _tecnicas_heredadas(op, id_destino, nivel, j))
+            aplazado_de[clave(id_destino)] = len(informe.aplazados)
+            informe.aplazados.append(Aplazado(j.id, id_destino, nivel, exp, tuple(tecnicas), tuple(niveles)))
+            continue
         if destino.num_jugadores >= destino.formato.max_jugadores:
             informe.sin_sitio.append(j.id)
             continue
@@ -195,13 +235,11 @@ def traspasar(origen: Partida, destino: Partida, mapa_ids: Mapping[int, int] | N
             # no se interpretan, y no se inventan.
             informe.sin_plantilla.append(j.id)
             continue
-        tecnicas, niveles = [0] * len(j.tecnicas), [0] * len(j.tecnicas)
+        tecnicas, niveles = [0] * NUM_TECNICAS, [0] * NUM_TECNICAS
         _anadir_tecnicas(tecnicas, niveles, _tecnicas_heredadas(op, id_destino, nivel, j))
         ficha = JugadorPartida(exp=exp, id=id_destino, tecnicas=tuple(tecnicas), niveles_tecnica=tuple(niveles),
                                nivel=nivel, crudo=normalizar_ficha_nueva(base, destino.formato))
         indice = destino.anadir_jugador(ficha)
         posicion[clave(id_destino)] = indice
         informe.traspasados.append((j.id, id_destino))
-        if destino.formato.grupo_al_traspasar and destino.meter_en_grupo(indice):
-            informe.al_grupo.append(id_destino)
     return informe
