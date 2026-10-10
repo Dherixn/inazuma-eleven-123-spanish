@@ -114,7 +114,10 @@ esto copia datos del juego al repositorio: son posiciones, tamaños y comportami
   número de jugador, nivel): manuales de The Earth, Gungnir, Procyon Net, Rock Wall Dam, Neo Galaxy, Drill
   Smasher, Triple Dash y Death Zone 2, uniformes Gemini, Epsilon, Genesis y Caos, y billetes de Ura-Zeus y
   Genesis. Sus nombres siguen en japonés en `item.dat` (registros de 44 B, desofuscados uno a uno con
-  `fichas.desofuscar`; nombre de 29 B al principio).
+  `fichas.desofuscar`; nombre de 29 B al principio; en +30 la técnica de los manuales; en +42 el índice ×32 de
+  la descripción en `item.STR`). La edición definitiva los pone en español (`definitiva/objetos.py`) con las
+  descripciones nuevas al final de `item.STR`: el juego las lee (probado en Azahar). Siguen en japonés otros
+  22 nombres del IE3 (25 en el Ogro), algunos sin uso («システム予約», «(仮)»): para la traducción.
 
 ## Identificar una partida
 
