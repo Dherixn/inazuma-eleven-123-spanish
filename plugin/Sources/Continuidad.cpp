@@ -198,12 +198,14 @@ namespace Definitiva {
             if (*puente)
                 MessageBox("Capítulo siguiente", Ajustar(puente))();
             // Corto: el cuadro tiene ocho líneas y la ruta de la copia ya ocupa dos.
-            Aviso(Utils::Format("%u llegarán con la historia, con su nivel%s; %u van a la reserva y %u mejoran.\n"
+            auto n = [](size_t x) { return static_cast<unsigned>(x); };
+            size_t llegan = informe.aplazados.size(), reserva = informe.traspasados.size(), mejoran = informe.mejorados.size();
+            Aviso(Utils::Format("%u %s con la historia, con su nivel%s; %u %s a la reserva y %u %s.\n"
                                 "Copia: %s\n\nSal al título SIN GUARDAR y pulsa Continuar.",
-                                static_cast<unsigned>(informe.aplazados.size()),
-                                MemoriaDelEquipoActiva() ? "" : " (activa Memoria del equipo)",
-                                static_cast<unsigned>(informe.traspasados.size()),
-                                static_cast<unsigned>(informe.mejorados.size()), copia.c_str()));
+                                n(llegan), llegan == 1 ? "llegará" : "llegarán",
+                                MemoriaDelEquipoActiva() ? "" : " (activa Memoria del equipo)", n(reserva),
+                                reserva == 1 ? "va" : "van", n(mejoran), mejoran == 1 ? "mejora" : "mejoran",
+                                copia.c_str()));
         }
 
         // Nombres de archivo sacados del código de la recopilación (code.bin descomprimido).
