@@ -60,14 +60,20 @@ def montar(mod: Path, plugin: Path, salida: Path) -> list[str]:
         raise FileNotFoundError(plugin)
     if salida.exists():
         raise FileExistsError(f"{salida} ya existe")
-    destino_mod = salida / "load" / "mods" / TITULO
-    shutil.copytree(mod, destino_mod, ignore=lambda carpeta, nombres: ["archive.fa"] if Path(carpeta) == romfs else [])
+    # La capa primero: si los datos no valen (p. ej. ya llevan la edición definitiva), no se crea nada.
     cambios, resumen = construir.capa_definitiva(FaArchive(str(base)))
-    info = construir.construir_archive(base, destino_mod / "romfs" / "archive.fa", cambios)
-    resumen.append(f"archive.fa: {info['cambios']} archivos cambiados ({info['tamano']} B)")
-    destino_plugin = salida / "sdmc" / "luma" / "plugins" / TITULO
-    destino_plugin.mkdir(parents=True)
-    shutil.copyfile(plugin, destino_plugin / "Definitiva.3gx")
-    (salida / "LEEME.txt").write_text(LEEME.format(titulo=TITULO), encoding="utf-8")
+    destino_mod = salida / "load" / "mods" / TITULO
+    try:
+        shutil.copytree(mod, destino_mod,
+                        ignore=lambda carpeta, nombres: ["archive.fa"] if Path(carpeta) == romfs else [])
+        info = construir.construir_archive(base, destino_mod / "romfs" / "archive.fa", cambios)
+        resumen.append(f"archive.fa: {info['cambios']} archivos cambiados ({info['tamano']} B)")
+        destino_plugin = salida / "sdmc" / "luma" / "plugins" / TITULO
+        destino_plugin.mkdir(parents=True)
+        shutil.copyfile(plugin, destino_plugin / "Definitiva.3gx")
+        (salida / "LEEME.txt").write_text(LEEME.format(titulo=TITULO), encoding="utf-8")
+    except BaseException:
+        shutil.rmtree(salida, ignore_errors=True)  # nada a medias: se puede volver a lanzar tal cual
+        raise
     resumen.append(f"paquete en {salida}")
     return resumen

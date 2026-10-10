@@ -61,6 +61,11 @@ class Tablas:
         return [struct.unpack_from("<H", self.unitno, i * 2)[0] for i in range(len(self.unitno) // 2)]
 
 
+# Aplicar la capa dos veces (sobre una carpeta que ya la lleva) duplicaría a Aiden en el IE3.
+YA_APLICADA = ("estas tablas ya llevan a Aiden: usa la carpeta de la traducción, no la de la edición "
+               "definitiva")
+
+
 def _crecimiento(stat_shawn: bytes) -> bytes:
     """Crecimiento del Shawn delantero con el retoque de Aiden y sus técnicas (registro desofuscado)."""
     s = bytearray(stat_shawn)
@@ -97,6 +102,8 @@ def ie2(tablas: Tablas, codificar: Callable[[str], bytes]) -> Tablas:
     aiden, shawn = _ficha_de(tablas, NUMERO_IE2), _ficha_de(tablas, SHAWN_DL)
     if aiden != FICHA_IE2:
         raise ValueError(f"el número {NUMERO_IE2} está en la ficha {aiden}, no en la {FICHA_IE2}")
+    if fichas.leer_crecimiento(tablas.unitstat[aiden * p.stat_paso:(aiden + 1) * p.stat_paso], p)[0].jugable:
+        raise ValueError(YA_APLICADA)
     base = bytearray(tablas.unitbase)
     b, s = aiden * p.base_paso + p.off_identidad, shawn * p.base_paso + p.off_identidad
     if struct.unpack_from("<H", base, b + _CARAS[0])[0] != CARA:
@@ -134,6 +141,9 @@ def ie3(tablas: Tablas, codificar: Callable[[str], bytes]) -> tuple[Tablas, int,
     ``codificar`` es el de ancho completo, como el nombre completo y las descripciones del IE3.
     """
     p = fichas.PERFILES["3ds.ie3"]
+    nombre = codificar(NOMBRE) + bytes(1)
+    if any(tablas.unitbase[i:i + len(nombre)] == nombre for i in range(0, len(tablas.unitbase), p.base_paso)):
+        raise ValueError(YA_APLICADA)
     shawn = _ficha_de(tablas, SHAWN_DL)
     ficha = ficha_libre_tras_numeradas(tablas)
     numero = max(tablas.numeros()) + 1

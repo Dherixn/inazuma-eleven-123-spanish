@@ -98,3 +98,13 @@ def test_ie3_sin_ficha_libre_es_un_error():
     base[31 * P3.base_paso:31 * P3.base_paso + 4] = b"Otro"  # la que sigue a la última numerada no es «未定»
     with pytest.raises(ValueError, match="no está libre"):
         aiden.ie3(aiden.Tablas(bytes(base), t.unitstat, t.unitno, t.textos), lambda s: s.encode("ascii"))
+
+
+def test_aplicar_aiden_dos_veces_es_un_error():
+    # Pasar como entrada la carpeta que ya lleva la edición definitiva duplicaría a Aiden en el IE3.
+    t2 = aiden.ie2(_tablas_ie2(), lambda s: s.encode("ascii"))
+    with pytest.raises(ValueError, match="ya llevan a Aiden"):
+        aiden.ie2(t2, lambda s: s.encode("ascii"))
+    t3, _, _ = aiden.ie3(_tablas_ie3(), lambda s: s.encode("utf-8"))
+    with pytest.raises(ValueError, match="ya llevan a Aiden"):
+        aiden.ie3(t3, lambda s: s.encode("utf-8"))
