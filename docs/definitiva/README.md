@@ -87,6 +87,9 @@ en `/luma/titles/00040000000BB800/` y el plugin en `/luma/plugins/00040000000BB8
   Celeste con aplazados: 10 llegan con la historia, 8 a la reserva, y la memoria que escribe el plugin es
   igual a la de la CLI. Mark creado por la historia a nivel 5 vuelve a su nivel 25 con su EXP en cuanto
   aparece; «Recuperar jugadores» trae a Kevin con su nivel y sus técnicas.
+- Con la historia de verdad: traspaso IE2 → Rayo Celeste sobre una partida tras el prólogo y, en Balón Bazar,
+  la escena en la que la historia une a Nathan, Kevin y Jack (evento 32010200). Entran en el grupo con Mark,
+  Kevin con su nivel 18 del IE2, y los 8 que la historia no convoca esperan en la reserva.
 - «Contenido de StreetPass y Wi-Fi»: con el contador a 45, al volver a abrir el juego salen los 27 avisos
   (IE1 desde 3 encuentros y el capítulo 3; IE2 «ambas versiones»; IE3 «todas las versiones») y «Has
   desbloqueado todos los personajes y objetos».
@@ -97,8 +100,10 @@ en `/luma/titles/00040000000BB800/` y el plugin en `/luma/plugins/00040000000BB8
 ## Pendiente
 
 - Partida larga de prueba: pasar por los tres juegos de principio a fin en la AYN Thor.
-- Convocatoria de Inazuma Japón con traspasados, en una partida de verdad (con eventos de prueba ya se ha
-  visto lo que hacen las altas y las bajas).
+- La convocatoria de Inazuma Japón (32011000) en una partida de verdad: la primera de la historia (32010200) ya
+  se ha visto.
+- Límite conocido: el plugin reconoce la plantilla con 4 jugadores o más; con menos (Mark solo tras el prólogo
+  del IE3) devuelve lo suyo en cuanto la historia une a los siguientes.
 - Ver en una partida que los jugadores y objetos desbloqueados por StreetPass aparecen desde su capítulo (#8, #10).
 - Revisar con el equipo de la traducción los títulos acortados (#14).
 
