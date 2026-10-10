@@ -1,6 +1,9 @@
 #include "Ayudas.hpp"
 
+#include <climits>
+#include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -24,6 +27,9 @@ namespace Definitiva {
         constexpr u32 ZONA_CERCA = 0x00040000;
         constexpr u32 ZONA_LARGO = 0x00100000;
         constexpr u32 MAX_VIGILADAS = 4;
+
+        // Nivel que deja el valor que trae el INI de cada juego.
+        constexpr s32 NO_TOCAR = INT32_MIN;
 
         struct Nivel {
             const char *nombre;
@@ -60,13 +66,27 @@ namespace Definitiva {
                  {{"Normal (la mitad)", 50}, {"Precio completo", 100}}, 0, nullptr},
                 {"fueradejuego", "Fuera de juego", "OFFSIDE_EFFECTIVE", "Si se pita el fuera de juego en los partidos.",
                  {{"Se pita", 1}, {"No se pita", 0}}, 0, nullptr},
+                // IZ_TYPE decide los exclusivos (equipos de los encuentros, fichajes de la carpeta, entrenamientos
+                // y, en el IE2, los scripts de eventos de data_iz_blizzard). El código lo consulta en cada uso,
+                // así que con una sola partida se puede jugar el contenido de las dos versiones.
+                {"version", "Versión", "IZ_TYPE",
+                 "Qué versión manda en los encuentros, fichajes y eventos exclusivos, sea cual sea el juego elegido: "
+                 "la partida es la misma. IE2 e IE3 (Ogro no tiene otra versión). Cámbiala cuando quieras para "
+                 "tener los exclusivos de las dos.",
+                 {{"la del juego elegido", NO_TOCAR}, {"Fuego / Rayo Celeste", 0}, {"Ventisca / Fuego Explosivo", 1}},
+                 0, nullptr},
             };
             return lista;
         }
 
         bool SeLeeAlCargar(const Ayuda &a) {
             std::string id = a.id;
-            return id == "rival" || id == "venta" || id == "fueradejuego";
+            return id == "rival" || id == "venta" || id == "fueradejuego" || id == "version";
+        }
+
+        // Ogro: sus INI tienen SEARCH_LV191 (como el IE3) pero no BGM_OFF, y no tiene datos de otra versión.
+        bool EsOgro(const u8 *tabla, u32 entradas) {
+            return BuscarClave(tabla, entradas, "SEARCH_LV191") >= 0 && BuscarClave(tabla, entradas, "BGM_OFF") < 0;
         }
 
         std::string Nombre(const Ayuda &a) { return std::string(a.titulo) + ": " + a.niveles[a.elegido].nombre; }
@@ -118,9 +138,12 @@ namespace Definitiva {
 
         void Aplicar(u8 *tabla, u32 entradas) {
             for (const Ayuda &a : Lista()) {
+                s32 valor = a.niveles[a.elegido].valor;
+                if (valor == NO_TOCAR || (std::strcmp(a.id, "version") == 0 && EsOgro(tabla, entradas)))
+                    continue;
                 int i = BuscarClave(tabla, entradas, a.clave);
                 if (i >= 0)
-                    PonerValor(tabla + i * INI_ENTRADA, a.niveles[a.elegido].valor);
+                    PonerValor(tabla + i * INI_ENTRADA, valor);
             }
         }
 
