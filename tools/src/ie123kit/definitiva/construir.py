@@ -15,7 +15,7 @@ import shutil
 from collections.abc import Callable
 from pathlib import Path
 
-from ie123kit.definitiva import aiden, objetos, titulos
+from ie123kit.definitiva import aiden, objetos, texturas_menu, titulos
 from ie123kit.nucleo.contenedores.fa import FaArchive, reemplazar_entrada
 
 LIMITE = 2**31 - 1
@@ -62,6 +62,10 @@ def capa_definitiva(arc: FaArchive, codificar: Callable[[str], bytes] | None = N
         hechos = sum(1 for e in objetos.CAMBIOS.values() if len(e) < 4 or juego in e[3]) - len(saltados)
         resumen.append(f"{juego}: {hechos} objetos que seguían en japonés, en español")
         resumen += [f"  aviso: {s}" for s in saltados]
+    retoques = texturas_menu.corregir(arc)
+    cambios |= retoques
+    if retoques:
+        resumen.append("menú: aviso final de StreetPass sin el resto japonés de su textura")
     rpgtitle, saltados = titulos.corregir(arc.read(titulos.RUTA))
     cambios[titulos.RUTA] = rpgtitle
     resumen.append(f"inazuma2: {len(titulos.CAMBIOS) - len(saltados)} títulos de equipo acortados a {titulos.CASILLAS} casillas")

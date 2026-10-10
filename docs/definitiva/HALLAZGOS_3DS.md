@@ -110,6 +110,9 @@ esto copia datos del juego al repositorio: son posiciones, tamaños y comportami
   luego el IE2 (ambas versiones) y el IE3 (todas las versiones). Con 45: los 27 avisos y «Has desbloqueado todos
   los personajes y objetos». Sin conexión, el contador no pasa de 0 en un emulador.
 - El menú guarda su copia de `Menu.sav` al elegir un juego: tras cambiar el archivo hay que cerrar el juego.
+- Los avisos son texturas de `menu/extra.arc` (`ie99_extra_pas_open_mes_b01..b03`). El panel dorado del final
+  (`b02`) se dibuja con dos trozos; el pequeño conservaba el arranque de un carácter japonés que salía como una
+  «t» suelta: la edición definitiva lo tapa (`definitiva/texturas_menu.py`).
 - Lo que desbloquea en el IE3 incluye `premium_item.dat` (19 entradas de 36 B: objeto, 1 y hasta 8 pares
   número de jugador, nivel): manuales de The Earth, Gungnir, Procyon Net, Rock Wall Dam, Neo Galaxy, Drill
   Smasher, Triple Dash y Death Zone 2, uniformes Gemini, Epsilon, Genesis y Caos, y billetes de Ura-Zeus y
