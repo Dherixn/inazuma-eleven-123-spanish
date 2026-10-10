@@ -119,6 +119,23 @@ namespace Definitiva {
         return &(cache[juego] = std::move(nombres));
     }
 
+    const std::vector<uint8_t> *ElementosDeTecnicas() {
+        Bloqueo bloqueo;
+        static std::vector<uint8_t> elementos;
+        static bool leidos = false;
+        if (leidos)
+            return &elementos;
+        Fuente &fuente = LaFuente();
+        std::vector<uint8_t> dat;
+        if (!fuente.Abrir() || !fuente.fa.Leer("inazuma3/data_iz/logic/command.dat", dat))
+            return nullptr;
+        elementos.resize(dat.size() / 36);
+        for (size_t i = 0; i < elementos.size(); ++i)
+            elementos[i] = dat[i * 36 + 8];
+        leidos = true;
+        return &elementos;
+    }
+
     const std::vector<uint16_t> *AltasDe(const std::string &juego) {
         Bloqueo bloqueo;
         static std::map<std::string, std::vector<uint16_t>> cache;

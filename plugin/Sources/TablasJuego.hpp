@@ -15,6 +15,10 @@ namespace Definitiva {
     // Nombres de las técnicas del juego por número (command.dat y command.STR). nullptr si no se pueden leer.
     const std::vector<std::string> *TecnicasDe(const std::string &juego);
 
+    // Elemento de cada técnica del IE3 (command.dat +8: 1 Aire, 2 Bosque, 3 Fuego, 4 Montaña; 0 sin elemento). Los
+    // números de técnica son los mismos en los tres juegos. nullptr si no se puede leer.
+    const std::vector<uint8_t> *ElementosDeTecnicas();
+
     // Números que la historia del juego une al equipo (ordenados; ver Nucleo/Eventos.hpp). Lee todos los
     // eventos la primera vez (unos segundos); nullptr si no se pueden leer.
     const std::vector<uint16_t> *AltasDe(const std::string &juego);

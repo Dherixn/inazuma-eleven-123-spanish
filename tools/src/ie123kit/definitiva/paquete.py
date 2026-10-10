@@ -57,7 +57,8 @@ QUÉ TRAE
 - Memoria del equipo: nadie pierde lo suyo por la historia. Quien se va y vuelve, vuelve como se fue;
   «Recuperar jugadores» trae de vuelta a quien la historia no vuelve a traer.
 - Fichajes especiales: Aiden Froste (cuando Shawn aprende «Aullido de lobo»), «Fichaje libre» (cualquier
-  jugador, también los de Wi-Fi o StreetPass), «Grupo y reserva» y «Contenido de StreetPass y Wi-Fi»
+  jugador, también los de Wi-Fi o StreetPass), «Supertécnicas a la carta» (cualquier técnica a cualquier
+  jugador), «Grupo y reserva» y «Contenido de StreetPass y Wi-Fi»
   (desbloquea lo que en la consola pedía 45 encuentros por StreetPass).
 - Ayudas opcionales (de fábrica, como el original salvo la memoria del equipo): encuentros, velocidad al
   andar, supertécnicas del rival, penaltis de la CPU, precio de venta, fuera de juego, versión (exclusivos

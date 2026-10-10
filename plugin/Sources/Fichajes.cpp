@@ -560,6 +560,117 @@ namespace Definitiva {
 
     }
 
+    namespace {
+
+        // Supertécnicas a la carta (ayuda, como en Tempête de Feu+ todas las técnicas se pueden conseguir): cualquier
+        // técnica del juego a cualquier jugador de la partida. Los números de técnica son los mismos en los tres
+        // juegos: se busca y se enseña con los nombres del IE3 (los del IE2 llevan los glifos de dos letras de la
+        // traducción) y la técnica tiene que existir en el juego de la partida.
+        void SupertecnicasALaCarta(MenuEntry *) {
+            if (!Preguntar("Supertécnicas a la carta\n\nEs una ayuda: enseña cualquier supertécnica del juego a un "
+                           "jugador de tu partida, sin manual ni nivel. Las de varios jugadores necesitan a sus "
+                           "compañeros. ¿Seguir?"))
+                return;
+            Elegida e;
+            std::vector<u8> datos;
+            if (!ElegirPartida(e, datos))
+                return;
+            const std::vector<std::string> *propias = TecnicasDe(e.tablas);
+            const std::vector<std::string> *ie3 = e.esIE3 ? propias : TecnicasDe("inazuma3");
+            Partida partida;
+            if (!propias || !ie3 || !partida.Cargar(datos, e.formato, e.espacio) || !partida.NumJugadores()) {
+                Aviso("No se han podido leer la partida o las técnicas del juego (archive.fa).");
+                return;
+            }
+            auto nombre = [&](u16 id) {
+                return id < ie3->size() && !(*ie3)[id].empty() ? (*ie3)[id] : Utils::Format("técnica %u", id);
+            };
+            std::vector<std::string> jugadores;
+            for (u32 k = 0; k < partida.NumJugadores(); ++k) {
+                JugadorPartida j = partida.Jugador(k);
+                jugadores.push_back(Utils::Format("%s (%u)", NombreDeJugador(e.tablas, *e.perfil, j.id).c_str(), j.nivel));
+            }
+            Keyboard quien("¿Quién aprende la supertécnica?", jugadores);
+            int k = quien.Open();
+            if (k < 0)
+                return;
+            Keyboard teclado(Ajustar("Escribe parte del nombre de la supertécnica (por ejemplo, «tornado» o «mano»):"));
+            std::string buscado;
+            if (teclado.Open(buscado) < 0 || buscado.empty())
+                return;
+            std::string clave = NormalizarBusqueda(buscado);
+            std::vector<u16> ids;
+            std::vector<std::string> opciones;
+            bool hayMas = false;
+            for (size_t id = 1; id < propias->size() && id < ie3->size(); ++id) {
+                if ((*propias)[id].empty() || (*ie3)[id].empty() || NormalizarBusqueda((*ie3)[id]).find(clave) == std::string::npos)
+                    continue;
+                if (ids.size() == 30) {
+                    hayMas = true;
+                    break;
+                }
+                ids.push_back(static_cast<u16>(id));
+                opciones.push_back((*ie3)[id]);
+            }
+            if (ids.empty()) {
+                Aviso("No hay ninguna supertécnica con ese nombre en este juego.");
+                return;
+            }
+            // Unas pocas técnicas comparten nombre con otra de otro elemento (Mano celestial de Montaña y de
+            // Bosque): a esas se les añade el elemento.
+            const std::vector<uint8_t> *elementos = ElementosDeTecnicas();
+            const char *ELEMENTOS[] = {"sin elemento", "Aire", "Bosque", "Fuego", "Montaña"};
+            for (size_t a = 0; a < opciones.size() && elementos; ++a) {
+                bool repetida = false;
+                for (size_t b = 0; b < opciones.size(); ++b)
+                    repetida |= a != b && (*ie3)[ids[a]] == (*ie3)[ids[b]];
+                u8 el = ids[a] < elementos->size() ? (*elementos)[ids[a]] : 0;
+                if (repetida)
+                    opciones[a] += Utils::Format(" (%s)", ELEMENTOS[el < 5 ? el : 0]);
+            }
+            Keyboard lista(hayMas ? "Hay más: afina la búsqueda. ¿Cuál?" : "¿Cuál?", opciones);
+            int r = lista.Open();
+            if (r < 0)
+                return;
+            u16 tecnica = ids[static_cast<size_t>(r)];
+            JugadorPartida j = partida.Jugador(static_cast<u32>(k));
+            std::string quienNombre = NombreDeJugador(e.tablas, *e.perfil, j.id);
+            int hueco = -1;
+            for (u32 m = 0; m < NUM_TECNICAS; ++m) {
+                if (j.tecnicas[m] == tecnica) {
+                    Aviso(quienNombre + " ya sabe «" + nombre(tecnica) + "».");
+                    return;
+                }
+                if (!j.tecnicas[m] && hueco < 0)
+                    hueco = static_cast<int>(m);
+            }
+            if (hueco < 0) {
+                std::vector<std::string> actuales;
+                for (u32 m = 0; m < NUM_TECNICAS; ++m)
+                    actuales.push_back(nombre(j.tecnicas[m]));
+                Keyboard cual(Ajustar(quienNombre + " ya sabe seis. ¿Cuál olvida?"), actuales);
+                hueco = cual.Open();
+                if (hueco < 0)
+                    return;
+            }
+            std::string copia;
+            if (CopiarPartidasASD(gCarpetaCopias, copia) <= 0) {
+                Aviso("No se ha podido hacer la copia de seguridad en la SD. No se ha tocado nada.");
+                return;
+            }
+            j.tecnicas[hueco] = tecnica;
+            j.nivelesTecnica[hueco] = 0;  // como las aprendidas en el traspaso
+            if (partida.PonerJugador(static_cast<u32>(k), j) != Error::Ninguno || partida.Sellar() != Error::Ninguno
+                || !EscribirPartida(e.archivo, partida.Datos())) {
+                Aviso(Utils::Format("No se ha podido guardar. Tu partida sigue como estaba (copia en %s).", copia.c_str()));
+                return;
+            }
+            Aviso(Utils::Format("%s aprende «%s».\nCopia: %s\n\nSal al título de %s SIN GUARDAR y pulsa Continuar.",
+                                quienNombre.c_str(), nombre(tecnica).c_str(), copia.c_str(), e.nombre));
+        }
+
+    }
+
     void FicharACanon() {
         constexpr uint16_t CANON = 2470, MARK = 1;
         Elegida e;
@@ -619,6 +730,9 @@ namespace Definitiva {
                                   Ajustar("Busca por nombre a cualquier jugador del juego y fíchalo, también los que "
                                           "solo se conseguían por Wi-Fi o StreetPass. Opcional: hace el juego más "
                                           "fácil."));
+        *carpeta += new MenuEntry("Supertécnicas a la carta (ayuda)", nullptr, SupertecnicasALaCarta,
+                                  Ajustar("Enseña cualquier supertécnica del juego a un jugador de tu partida, sin "
+                                          "manual. Opcional: hace el juego más fácil."));
         *carpeta += new MenuEntry("Grupo y reserva", nullptr, GrupoYReserva,
                                   Ajustar("Pasa a un jugador de la reserva al grupo (los 16 que juegan) y, si está "
                                           "lleno, elige quién sale. El menú del juego no lo deja hacer al principio "
