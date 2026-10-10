@@ -1,0 +1,67 @@
+#pragma once
+
+// La plantilla del juego en memoria (no la del archivo de partida): un registro por jugador con la EXP, el
+// número, el nivel y, al lado, los PE y PT actuales y máximos. Su dirección cambia de una sesión a otra (la
+// traducción cambia el tamaño de lo que se carga antes), así que se busca por su forma: registros seguidos
+// con números de jugadores de verdad, nivel 1..99 y una EXP que llega al menos a la de su nivel.
+//
+// Medido en Azahar (los códigos de Sharkive para este juego dan las mismas distancias):
+//   IE1: registros cada 0x188, nivel en +0x3E, PE/PT en +0xAC del registro.
+//   IE2: registros cada 0xFC,  nivel en +0x4A, PE/PT en +0x70 del registro.
+//   IE3 y Ogro: registros cada 0x6C (los de la partida, seguidos), nivel en +0x4A; PE/PT aparte, en
+//   inicio + 0xCA6C + i * 0x98.
+// PE/PT son dos pares de u16 (actual y máximo, en un orden que no hace falta saber: ver LlenarPePt).
+
+#include <cstddef>
+#include <cstdint>
+#include <map>
+
+#include "DatosDestino.hpp"
+
+namespace Definitiva {
+
+    struct GeometriaPlantilla {
+        uint32_t paso;
+        uint32_t offNivel;
+        uint32_t maxJugadores;
+        uint32_t offPePt;   // desde el comienzo de la plantilla
+        uint32_t pasoPePt;
+    };
+
+    extern const GeometriaPlantilla GEO_IE1, GEO_IE2, GEO_IE3;
+
+    // Hasta dónde puede llegar la EXP de un jugador de ese nivel para seguir siendo creíble: la de dos niveles
+    // más (el juego sube de nivel al acabar el partido; el multiplicador no pasa de aquí).
+    uint32_t TopeExp(const JuegoDatos &t, uint16_t numero, uint8_t nivel);
+
+    // ¿Es un registro de jugador plausible para este juego? Número jugable, nivel 1..99 y EXP entre la de su
+    // nivel y TopeExp.
+    bool RegistroValido(const uint8_t *reg, const GeometriaPlantilla &g, const JuegoDatos &t);
+
+    // Registros válidos seguidos desde `inicio` (como mucho g.maxJugadores o lo que quepa en `disponible`);
+    // se para en el primer número repetido.
+    uint32_t ContarRegistros(const uint8_t *inicio, size_t disponible, const GeometriaPlantilla &g, const JuegoDatos &t);
+
+    // Primer desplazamiento de la zona donde empieza una plantilla de al menos `minimo` registros (el
+    // registro de antes, si cabe en la zona, no vale). -1 si no hay.
+    long BuscarPlantilla(const uint8_t *zona, size_t largo, const GeometriaPlantilla &g, const JuegoDatos &t,
+                         uint32_t minimo = 4);
+
+    // Deja los dos pares (actual y máximo) de PE y de PT con el mayor de cada uno: sin saber cuál es el
+    // actual, como el actual nunca pasa del máximo, el mayor es el máximo. 8 bytes: a, b, c, d (u16).
+    // Devuelve true si ha cambiado algo.
+    bool LlenarPePt(uint8_t *pares);
+
+    // Multiplica la EXP que se gana: recuerda la última EXP de cada jugador (por número) y, si ha subido,
+    // suma (factor - 1) veces la subida, sin pasar de `tope`.
+    class MultiplicadorExp {
+    public:
+        void Olvidar() { ultima_.clear(); }
+        // Devuelve la EXP que debe quedar.
+        uint32_t Aplicar(uint16_t numero, uint32_t exp, int factor, uint32_t tope);
+
+    private:
+        std::map<uint16_t, uint32_t> ultima_;
+    };
+
+}

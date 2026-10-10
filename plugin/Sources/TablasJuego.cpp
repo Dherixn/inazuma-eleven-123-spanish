@@ -56,7 +56,24 @@ namespace Definitiva {
 
     }
 
+    namespace {
+        // El menú (Continuidad, Fichajes) y el hilo de las ayudas piden tablas a la vez.
+        struct Cerrojo {
+            LightLock cerrojo;
+            Cerrojo() { LightLock_Init(&cerrojo); }
+        };
+        LightLock &ElCerrojo() {
+            static Cerrojo c;
+            return c.cerrojo;
+        }
+        struct Bloqueo {
+            Bloqueo() { LightLock_Lock(&ElCerrojo()); }
+            ~Bloqueo() { LightLock_Unlock(&ElCerrojo()); }
+        };
+    }
+
     const JuegoDatos *TablasDe(const std::string &juego, const PerfilJuego &perfil) {
+        Bloqueo bloqueo;
         static std::map<std::string, std::unique_ptr<JuegoDatos>> cache;
         auto it = cache.find(juego);
         if (it != cache.end())

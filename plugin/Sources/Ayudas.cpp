@@ -11,6 +11,7 @@
 
 #include "Nucleo/Texto.hpp"
 #include "Nucleo/TablaIni.hpp"
+#include "PlantillaEnJuego.hpp"
 
 using namespace CTRPluginFramework;
 
@@ -40,7 +41,7 @@ namespace Definitiva {
         struct Ayuda {
             const char *id;
             const char *titulo;
-            const char *clave;
+            const char *clave;  // la del INI; nullptr = ayuda sobre la plantilla (PlantillaEnJuego)
             const char *nota;
             std::vector<Nivel> niveles;  // el primero es el valor de fábrica
             int elegido;
@@ -76,8 +77,23 @@ namespace Definitiva {
                  "tener los exclusivos de las dos.",
                  {{"la del juego elegido", NO_TOCAR}, {"Fuego / Rayo Celeste", 0}, {"Ventisca / Fuego Explosivo", 1}},
                  0, nullptr},
+                // Sobre la plantilla en memoria (ver PlantillaEnJuego): menos farmeo, todo opcional.
+                {"pept", "PE y PT siempre llenos", nullptr,
+                 "Los PE y PT de todos tus jugadores se mantienen al máximo: se acabó descansar entre partidos.",
+                 {{"No", 0}, {"Sí", 1}}, 0, nullptr},
+                {"exp", "Experiencia", nullptr,
+                 "Multiplica la EXP que gana cada jugador. El juego sube de nivel al acabar el partido, así que "
+                 "parte de lo ganado de más puede notarse en el siguiente.",
+                 {{"Normal (x1)", 1}, {"Doble (x2)", 2}, {"Triple (x3)", 3}}, 0, nullptr},
             };
             return lista;
+        }
+
+        s32 Valor(const char *id) {
+            for (const Ayuda &a : Lista())
+                if (std::strcmp(a.id, id) == 0)
+                    return a.niveles[a.elegido].valor;
+            return 0;
         }
 
         bool SeLeeAlCargar(const Ayuda &a) {
@@ -140,7 +156,7 @@ namespace Definitiva {
         void Aplicar(u8 *tabla, u32 entradas) {
             for (const Ayuda &a : Lista()) {
                 s32 valor = a.niveles[a.elegido].valor;
-                if (valor == NO_TOCAR || (std::strcmp(a.id, "version") == 0 && EsOgro(tabla, entradas)))
+                if (!a.clave || valor == NO_TOCAR || (std::strcmp(a.id, "version") == 0 && EsOgro(tabla, entradas)))
                     continue;
                 int i = BuscarClave(tabla, entradas, a.clave);
                 if (i >= 0)
@@ -177,17 +193,39 @@ namespace Definitiva {
         // Cada milisegundo se repasan las tablas ya vistas: el juego lee los parámetros del partido justo después
         // de cargar el INI (con varias cargas de archivo entre medias), y hay que llegar antes. Al cargar otro
         // juego, su tabla cae en otro sitio: se busca cada 10 ms cerca del principio y cada medio segundo en 1 MB.
+        // Qué juego tiene cargada esta tabla: el IE3 trae SEARCH_LV191 y BGM_OFF; Ogro, solo SEARCH_LV191; el
+        // IE2, IZ_TYPE; el IE1, ninguna de las tres.
+        JuegoActivo Clasificar(const u8 *tabla, u32 entradas) {
+            if (BuscarClave(tabla, entradas, "SEARCH_LV191") >= 0)
+                return BuscarClave(tabla, entradas, "BGM_OFF") >= 0 ? JuegoActivo::IE3 : JuegoActivo::Ogro;
+            return BuscarClave(tabla, entradas, "IZ_TYPE") >= 0 ? JuegoActivo::IE2 : JuegoActivo::IE1;
+        }
+
+        // Cada milisegundo se repasan las tablas ya vistas: el juego lee los parámetros del partido justo después
+        // de cargar el INI (con varias cargas de archivo entre medias), y hay que llegar antes. Al cargar otro
+        // juego, su tabla cae en otro sitio: se busca cada 10 ms cerca del principio y cada medio segundo en 1 MB.
+        // Cada 100 ms, las ayudas de la plantilla, con el juego de la tabla viva más reciente.
         void Bucle(void *) {
+            JuegoActivo juego = JuegoActivo::Ninguno;
             for (u32 vuelta = 0;; ++vuelta) {
                 svcSleepThread(1000000LL);
-                for (u32 k = 0; k < numVigiladas; ++k) {
-                    u32 tabla = vigiladas[k];
+                bool clasificar = vuelta % 100 == 0;
+                JuegoActivo visto = JuegoActivo::Ninguno;
+                for (u32 j = numVigiladas; j-- > 0;) {  // de la más reciente a la más antigua
+                    u32 tabla = vigiladas[j];
                     if (!Legible(tabla, 2 * INI_ENTRADA))
                         continue;
                     u32 cabe = (ZONA_TABLAS + ZONA_LARGO - tabla) / INI_ENTRADA;
                     u32 entradas = ContarEntradas(reinterpret_cast<const u8 *>(tabla), cabe);
-                    if (EsTablaIni(reinterpret_cast<const u8 *>(tabla), entradas) && Legible(tabla, entradas * INI_ENTRADA))
+                    if (EsTablaIni(reinterpret_cast<const u8 *>(tabla), entradas) && Legible(tabla, entradas * INI_ENTRADA)) {
                         Aplicar(reinterpret_cast<u8 *>(tabla), entradas);
+                        if (clasificar && visto == JuegoActivo::Ninguno)
+                            visto = Clasificar(reinterpret_cast<const u8 *>(tabla), entradas);
+                    }
+                }
+                if (clasificar) {
+                    juego = visto;
+                    CuidarPlantilla(juego, Valor("pept") != 0, static_cast<int>(Valor("exp")));
                 }
                 if (vuelta % 500 == 0)
                     Buscar(ZONA_LARGO);
@@ -221,7 +259,8 @@ namespace Definitiva {
 
     void IniciarAyudas() {
         Cargar();
-        threadCreate(Bucle, nullptr, 0x1000, 0x1A, -2, true);
+        // Pila holgada: el hilo también lee las tablas de archive.fa para reconocer la plantilla.
+        threadCreate(Bucle, nullptr, 0x8000, 0x1A, -2, true);
     }
 
     MenuFolder *CrearMenuAyudas() {
