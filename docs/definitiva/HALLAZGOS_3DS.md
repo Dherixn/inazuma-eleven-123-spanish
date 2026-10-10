@@ -17,6 +17,17 @@ esto copia datos del juego al repositorio: son posiciones, tamaños y comportami
   +0, número en +4 (el de `unitno.dat`, no el índice de ficha), PE y PT actuales en +0x34, técnicas en
   +0x38 (u8 en el IE1, u16 en IE2/IE3), nivel en +0x3E (IE1) o +0x4A.
 - El juego recalcula estadísticas y máximos de PE/PT a partir del nivel.
+- Sitio en el equipo (IE2 e IE3, en la ficha): dorsal en +0x57 y sitio en la formación en +0x58 (los dos a
+  0 en la reserva: el juego los limpia al guardar), órdenes en +0x5B (0x10 y, encima, capitán y
+  lanzadores: Mark 0x1F en el IE2, 0x15 en el IE3). IE2: puesto entre los cuatro de cabecera (los que
+  acompañan por el mapa y juegan los 4 contra 4) en +0x5D, y su lista de números en 0x98. IE3: +0x4B es el
+  equipo (1 en los naturales; 0x36 el Orfeo de Paolo Bianchi, el del prólogo).
+- **Grupo** (los 16 que juegan; el resto es la reserva, página 2 de Equipo): en el IE2, una lista de 16
+  números (u16) 0x40 B detrás de los 100 registros (0x3E68); el byte 0x56 de la información es su resumen.
+  Al guardar, el juego reordena los registros (grupo primero). En el IE2, el menú Equipo no deja pasar a
+  nadie de la reserva al grupo (al menos en el episodio 1). En el IE3 el grupo aún no está localizado.
+- Prólogo del IE3: juegas con Paolo Bianchi (número 3170) y luego la historia lo quita y deja a Mark solo en
+  el grupo. Si se ha traspasado antes, los traspasados siguen (Mark con su nivel, el resto en la reserva).
 
 ## Tablas
 
@@ -28,8 +39,11 @@ esto copia datos del juego al repositorio: son posiciones, tamaños y comportami
 - Las caras de Shawn (0x919, 0x921, 0x922) van atadas a su cambio de forma (`unitchange.dat`): cualquier
   ficha con ellas sale como Shawn defensa. Aiden usa la cara 0x51B (el retrato de Atsuya), que existe en
   IE2 e IE3.
-- Técnicas: IE2 `command.dat` de 28 B (nombre en +20, × 32 en `command.STR`); IE3 de 36 B (nombre en +24).
-  Los números de técnica coinciden en IE2 e IE3.
+- Técnicas: IE1 `command.dat` de 24 B (nombre en +16, × 32 en `command.STR`), IE2 de 28 B (+20), IE3 de
+  36 B (+24). Los números de técnica coinciden en IE2 e IE3. Los nombres de técnica van en letras normales
+  en los tres (los de jugador del IE1/IE2, no).
+- Shawn tiene tres fichas jugables en el IE3 (2329 DF, 2337 y 2338 DL): por eso la memoria de técnicas va
+  por personaje (la clave del nombre) y no por número.
 - Títulos de equipo del IE2 (`rpgtitle.STR`): la caja tiene 14 casillas.
 - Descripciones del IE2: la traducción junta letras de dos en dos con glifos propios (tabla generada fuera
   del repositorio); en ancho completo caben 18 por línea. Las del IE3 van en ancho completo.
@@ -49,6 +63,15 @@ esto copia datos del juego al repositorio: son posiciones, tamaños y comportami
   F/B` y, en el IE2, la carpeta `data_iz_blizzard` (scripts de eventos). La partida es la del juego elegido.
 - `SPECIAL_SKILL_SPEND_TP` y `FUSEI_ITEM_NO` no los lee ningún módulo.
 
+## Aviso de «datos ilegítimos»
+
+Al continuar una partida del IE3 sale una pantalla que avisa de que, si se detectan datos ilegítimos, «se
+activará un programa que te perjudicará en los enfrentamientos». Es un aviso fijo, no una detección: sale
+igual con una partida sin tocar y la pantalla (`CMainTitleScreenCaution`) está en los tres módulos, IE1
+incluido. Ningún módulo exporta símbolos de comprobación de partidas y `FUSEI_ITEM_NO` no lo lee nadie; el
+«resultado no válido» de los scripts de partido es del modo de conexión. Queda por vigilar en partidas
+largas por si hubiera algo sin nombre.
+
 ## Plantilla en memoria
 
 - Su dirección cambia entre sesiones (la traducción cambia el tamaño de lo que se carga antes): se busca
@@ -57,6 +80,10 @@ esto copia datos del juego al repositorio: son posiciones, tamaños y comportami
 - El partido gasta los PT del propio registro (no hay copia).
 - Pasión y Amistad: IE1 plantilla − 0xCE4, IE2 plantilla − 0xF0C; en el IE3 van en otro bloque.
 - Dentro del heap hay código de los CRO en solo lectura: hay que leer bloque a bloque (`svcQueryMemory`).
+- Técnicas en el registro de memoria como en la partida: +0x38 (u8 en el IE1; u16 en IE2/IE3 con sus
+  niveles en +0x44). Comprobado en los tres juegos con los nombres de `command.dat`.
+- Para buscarla, la EXP tiene que estar entre la de su nivel y la de dos niveles más; una vez encontrada,
+  la cuenta no mira el tope (un jugador con EXP de más no deja sin ayudas a los de detrás).
 
 ## Contenido de conexión (por estudiar)
 
