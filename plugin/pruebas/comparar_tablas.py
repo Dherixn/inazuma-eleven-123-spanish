@@ -16,6 +16,7 @@ AQUI = Path(__file__).resolve().parent
 PLUGIN = AQUI.parent
 sys.path.insert(0, str(PLUGIN.parent / "tools" / "src"))
 
+from ie123kit.definitiva import aiden as aiden_mod
 from ie123kit.definitiva import altas as altas_mod
 from ie123kit.definitiva import datos_juego, fichas, identidades
 from ie123kit.nucleo.contenedores.fa import FaArchive
@@ -43,7 +44,9 @@ def volcado_python(logica: Path, archive: Path) -> list[str]:
                                               ("IE2_OGRO", (j2, d2), (jo, do), altas["OGRO"]),
                                               ("IE3_OGRO", (j3, d3), (jo, do), altas["OGRO"])):
         por_ficha = identidades.preferir_altas(identidades.emparejar_por_cara(jo_, jd_), jd_, dd_, a)
-        pares = datos_juego.mapa_de_numeros(por_ficha, do_, dd_)
+        juegos = {"IE1_IE2": ("inazuma1", "inazuma2"), "IE2_IE3": ("inazuma2", "inazuma3"),
+                  "IE2_OGRO": ("inazuma2", "inazuma3_ogre"), "IE3_OGRO": ("inazuma3", "inazuma3_ogre")}[nombre]
+        pares = aiden_mod.ajustar_mapa(datos_juego.mapa_de_numeros(por_ficha, do_, dd_), *juegos)
         lineas += [f"PAR {nombre} {a} {b}" for a, b in sorted(pares.items())]
     for nombre, d in (("IE2", d2), ("IE3", d3), ("OGRO", do)):
         for i, num in enumerate(d.numero):

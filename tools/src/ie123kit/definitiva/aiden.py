@@ -17,13 +17,18 @@ from __future__ import annotations
 
 import struct
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from ie123kit.definitiva import fichas
 
 NUMERO_IE2 = 1307
 SHAWN = (2329, 2337, 2338)  # defensa, delantero (modo Atsuya) y delantero completo; igual en IE2 e IE3
 SHAWN_DL = 2337
+# Números de Aiden en cada juego de la recopilación (en IE3 y Ogro ocupa la ficha 2337, ver ie3) y el Shawn que
+# ficha la historia del IE3 (altas.py).
+NUMERO_IE3 = SHAWN_DL
+SHAWN_HISTORIA_IE3 = 2338
+NUMEROS = {"inazuma2": NUMERO_IE2, "inazuma3": NUMERO_IE3, "inazuma3_ogre": NUMERO_IE3}
 CARA = 0x051B
 FICHA_IE2 = 1060
 
@@ -40,7 +45,8 @@ LECTURA = "ふぶき　あつや"
 # Descripciones en ancho completo, como las del juego. La caja del IE2 da 18 casillas por línea (sus textos
 # juntan letras de dos en dos con glifos propios de la traducción, que no se tocan: tipografía v20).
 DESCRIPCION_IE2 = "Hermano de Shawn y\nsu otra mitad."
-DESCRIPCION_IE3 = "El hermano pequeño de Shawn, su otra mitad.\nSolo vive para marcar goles."
+# Sin comas: la de ancho completo no sale en la caja del IE3.
+DESCRIPCION_IE3 = "El hermano pequeño de Shawn y su otra mitad.\nSolo vive para marcar goles."
 CASILLAS_IE2 = 18
 
 # Bloque de identidad del IE2 (unitbase + 64) y del IE3 (+ 76): desplazamientos dentro del bloque.
@@ -56,6 +62,10 @@ class Tablas:
     unitstat: bytes
     unitno: bytes
     textos: bytes = b""  # unitbase.STR: descripciones, punteros u16 ×32 al final de la ficha
+    # Por ficha: colegio (1 B) y datos de búsqueda. La capa no los cambia (Aiden usa una ficha nativa), pero
+    # se leen para que, si algún paso los tocara, también se escribieran.
+    uschool: bytes = b""
+    usearch: bytes = b""
 
     def numeros(self) -> list[int]:
         return [struct.unpack_from("<H", self.unitno, i * 2)[0] for i in range(len(self.unitno) // 2)]
@@ -121,7 +131,23 @@ def ie2(tablas: Tablas, codificar: Callable[[str], bytes]) -> Tablas:
         raise ValueError("la descripción no cabe en la caja del IE2")
     textos, puntero = _anadir_texto(tablas.textos, codificar(DESCRIPCION_IE2))
     struct.pack_into("<H", base, aiden * p.base_paso + p.base_paso - 2, puntero)
-    return Tablas(bytes(base), bytes(stat), tablas.unitno, textos)
+    # replace: lo que no se toca (números, colegio, búsqueda) sigue igual y no se reescribe.
+    return replace(tablas, unitbase=bytes(base), unitstat=bytes(stat), textos=textos)
+
+
+def ajustar_mapa(mapa: dict[int, int], juego_origen: str, juego_destino: str) -> dict[int, int]:
+    """Aiden en la tabla de números del traspaso (gemelo de ``AjustarAiden``, DatosDestino.cpp). En el IE3 no
+    tiene cara propia, así que el emparejamiento por cara no lo encuentra: su número va al del destino. Y nadie
+    más puede caer en la ficha de Aiden (en IE3 y Ogro es la 2337 de Shawn): un Shawn que llegara ahí va al
+    que ficha la historia."""
+    aiden_o, aiden_d = NUMEROS.get(juego_origen, 0), NUMEROS.get(juego_destino, 0)
+    salida = dict(mapa)
+    for origen, destino in mapa.items():
+        if destino == aiden_d and origen != aiden_o and juego_destino != "inazuma2":
+            salida[origen] = SHAWN_HISTORIA_IE3
+    if aiden_o and aiden_d:
+        salida[aiden_o] = aiden_d
+    return salida
 
 
 def ficha_libre_tras_numeradas(tablas: Tablas) -> int:
@@ -136,20 +162,24 @@ def ficha_libre_tras_numeradas(tablas: Tablas) -> int:
 
 
 def ie3(tablas: Tablas, codificar: Callable[[str], bytes]) -> tuple[Tablas, int, int]:
-    """Aiden en una ficha libre del IE3 (u Ogro). Devuelve las tablas, su ficha y su número.
+    """Aiden en el IE3 (u Ogro): toma la ficha de Shawn en modo Atsuya (``SHAWN_DL``, 2337), que la historia
+    del IE3 no ficha (ficha a Shawn como 2338; ver altas.py). Devuelve las tablas, su ficha y su número.
 
-    ``codificar`` es el de ancho completo, como el nombre completo y las descripciones del IE3.
+    Una ficha nueva o reciclada (la libre de detrás de las numeradas, una de relleno) sale en la reserva pero
+    el IE3 no la pinta en el grupo aunque esté en la lista: el grupo solo admite fichas nativas de jugador
+    (comprobado en Azahar: ni copiando la de Shawn entera). De la 2337 se quedan el número, el modelo, el icono,
+    el colegio, la búsqueda y las caras; cambian el nombre, la descripción y el crecimiento (técnicas de
+    Atsuya). El retrato de Atsuya (``CARA``) no existe en el IE3: con él, el grupo tampoco pinta al jugador
+    (ni sale su icono en la reserva). La llevan Nuevo Alpino y Los Impostores (y Chicharros en Familia en el
+    Ogro): ahí juega Aiden. ``codificar`` es el de ancho completo, como los nombres del IE3.
     """
     p = fichas.PERFILES["3ds.ie3"]
     nombre = codificar(NOMBRE) + bytes(1)
     if any(tablas.unitbase[i:i + len(nombre)] == nombre for i in range(0, len(tablas.unitbase), p.base_paso)):
         raise ValueError(YA_APLICADA)
-    shawn = _ficha_de(tablas, SHAWN_DL)
-    ficha = ficha_libre_tras_numeradas(tablas)
-    numero = max(tablas.numeros()) + 1
+    ficha = _ficha_de(tablas, SHAWN_DL)
     base = bytearray(tablas.unitbase)
-    b0, b1 = shawn * p.base_paso, ficha * p.base_paso
-    base[b1:b1 + p.base_paso] = base[b0:b0 + p.base_paso]
+    b1 = ficha * p.base_paso
     textos, puntero = _anadir_texto(tablas.textos, codificar(DESCRIPCION_IE3))
     struct.pack_into("<H", base, b1 + p.base_paso - 2, puntero)
     for offset, ancho, cod in ((0, 28, codificar(NOMBRE)), (28, 16, NOMBRE_CORTO.encode("ascii")),
@@ -157,11 +187,7 @@ def ie3(tablas: Tablas, codificar: Callable[[str], bytes]) -> tuple[Tablas, int,
         if len(cod) >= ancho:
             raise ValueError(f"«{cod!r}» no cabe en {ancho} B con su terminador")
         base[b1 + offset:b1 + offset + ancho] = cod + bytes(ancho - len(cod))
-    for o in _CARAS:
-        struct.pack_into("<H", base, b1 + p.off_identidad + o, CARA)
     stat = bytearray(tablas.unitstat)
-    plano = fichas.desofuscar(tablas.unitstat[shawn * p.stat_paso:(shawn + 1) * p.stat_paso])
+    plano = fichas.desofuscar(tablas.unitstat[ficha * p.stat_paso:(ficha + 1) * p.stat_paso])
     stat[ficha * p.stat_paso:(ficha + 1) * p.stat_paso] = fichas.ofuscar(_crecimiento(plano))
-    no = bytearray(tablas.unitno)
-    struct.pack_into("<H", no, ficha * 2, numero)
-    return Tablas(bytes(base), bytes(stat), bytes(no), textos), ficha, numero
+    return replace(tablas, unitbase=bytes(base), unitstat=bytes(stat), textos=textos), ficha, SHAWN_DL

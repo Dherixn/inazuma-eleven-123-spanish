@@ -116,6 +116,12 @@ namespace Definitiva {
         bool MeterEnGrupo(uint32_t indice);
         // ¿Está en la lista del grupo? false también si el formato no la tiene localizada.
         bool EnGrupo(uint16_t numero) const;
+        // Números del grupo tal como los ve el juego (con la lista vacía, los primeros registros). Vacío si el
+        // formato no tiene el grupo localizado.
+        std::vector<uint16_t> Grupo() const;
+        // Pasa al jugador a la reserva: fuera de la lista (los de detrás suben), dorsal y sitio a 0. false si
+        // no estaba en el grupo.
+        bool SacarDelGrupo(uint32_t indice);
 
         const std::vector<uint8_t> &Datos() const { return datos_; }
         const FormatoPartida *Formato() const { return formato_; }
@@ -125,6 +131,7 @@ namespace Definitiva {
             return base_ + formato_->jugadoresInicio + indice * formato_->jugadorPaso;
         }
         Error EscribirReg(uint32_t indice, const JugadorPartida &j);
+        void SembrarGrupo();
         uint32_t LeerU32(uint32_t off) const;
         void EscribirU32(uint32_t off, uint32_t valor);
 

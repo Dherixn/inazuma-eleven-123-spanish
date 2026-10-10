@@ -24,12 +24,15 @@ LOGICA = "{juego}/data_iz/logic/"
 
 def _tablas(arc: FaArchive, juego: str) -> aiden.Tablas:
     base = LOGICA.format(juego=juego)
-    return aiden.Tablas(*(arc.read(base + f) for f in ("unitbase.dat", "unitstat.dat", "unitno.dat", "unitbase.STR")))
+    leer = lambda f: arc.read(base + f) if arc.exists(base + f) else b""  # noqa: E731
+    return aiden.Tablas(*(leer(f) for f in ("unitbase.dat", "unitstat.dat", "unitno.dat", "unitbase.STR",
+                                            "uschool.dat", "usearch.dat")))
 
 
 def _cambios_de(juego: str, antes: aiden.Tablas, despues: aiden.Tablas) -> dict[str, bytes]:
     base = LOGICA.format(juego=juego)
-    nombres = {"unitbase": "unitbase.dat", "unitstat": "unitstat.dat", "unitno": "unitno.dat", "textos": "unitbase.STR"}
+    nombres = {"unitbase": "unitbase.dat", "unitstat": "unitstat.dat", "unitno": "unitno.dat", "textos": "unitbase.STR",
+               "uschool": "uschool.dat", "usearch": "usearch.dat"}
     return {base + archivo: getattr(despues, campo) for campo, archivo in nombres.items()
             if getattr(despues, campo) != getattr(antes, campo)}
 

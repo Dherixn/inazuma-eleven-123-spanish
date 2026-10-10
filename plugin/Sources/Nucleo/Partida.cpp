@@ -156,20 +156,7 @@ namespace Definitiva {
         if (!formato_->offGrupo || indice >= NumJugadores())
             return false;
         const uint32_t lista = base_ + formato_->offGrupo;
-        bool vacia = true;
-        for (uint32_t k = 0; k < MAX_GRUPO && vacia; ++k)
-            vacia = U16(&datos_[lista + 2 * k]) == 0;
-        if (vacia && datos_[base_ + OFF_NUM_GRUPO]) {
-            // Lista vacía con grupo (IE3 tras el prólogo): el grupo son los primeros registros. Se escriben
-            // antes de añadir para no sacar a nadie.
-            uint32_t cuantos = datos_[base_ + OFF_NUM_GRUPO];
-            if (cuantos > MAX_GRUPO)
-                cuantos = MAX_GRUPO;
-            if (cuantos > NumJugadores())
-                cuantos = NumJugadores();
-            for (uint32_t k = 0; k < cuantos; ++k)
-                PonU16(&datos_[lista + 2 * k], U16(&datos_[OffJugador(k) + 4]));
-        }
+        SembrarGrupo();
         const uint32_t oJugador = OffJugador(indice);
         const uint16_t numero = U16(&datos_[oJugador + 4]);
         int hueco = -1;
@@ -203,6 +190,62 @@ namespace Definitiva {
         datos_[oJugador + OFF_DORSAL] = static_cast<uint8_t>(dorsal);
         if (formato_->sitioAlEntrar)
             datos_[oJugador + OFF_SITIO] = static_cast<uint8_t>(miembros);
+        datos_[base_ + OFF_NUM_GRUPO] = static_cast<uint8_t>(miembros);
+        return true;
+    }
+
+    void Partida::SembrarGrupo() {
+        const uint32_t lista = base_ + formato_->offGrupo;
+        for (uint32_t k = 0; k < MAX_GRUPO; ++k)
+            if (U16(&datos_[lista + 2 * k]))
+                return;
+        // Lista vacía con grupo (IE3 tras el prólogo): el grupo son los primeros registros. Se escriben antes de
+        // tocarla para no sacar a nadie.
+        uint32_t cuantos = datos_[base_ + OFF_NUM_GRUPO];
+        if (cuantos > MAX_GRUPO)
+            cuantos = MAX_GRUPO;
+        if (cuantos > NumJugadores())
+            cuantos = NumJugadores();
+        for (uint32_t k = 0; k < cuantos; ++k)
+            PonU16(&datos_[lista + 2 * k], U16(&datos_[OffJugador(k) + 4]));
+    }
+
+    std::vector<uint16_t> Partida::Grupo() const {
+        std::vector<uint16_t> salida;
+        if (!formato_->offGrupo)
+            return salida;
+        for (uint32_t k = 0; k < MAX_GRUPO; ++k)
+            if (uint16_t n = U16(&datos_[base_ + formato_->offGrupo + 2 * k]))
+                salida.push_back(n);
+        if (salida.empty()) {
+            uint32_t cuantos = datos_[base_ + OFF_NUM_GRUPO];
+            for (uint32_t k = 0; k < cuantos && k < MAX_GRUPO && k < NumJugadores(); ++k)
+                salida.push_back(U16(&datos_[OffJugador(k) + 4]));
+        }
+        return salida;
+    }
+
+    bool Partida::SacarDelGrupo(uint32_t indice) {
+        if (!formato_->offGrupo || indice >= NumJugadores())
+            return false;
+        SembrarGrupo();
+        const uint32_t lista = base_ + formato_->offGrupo;
+        const uint32_t oJugador = OffJugador(indice);
+        const uint16_t numero = U16(&datos_[oJugador + 4]);
+        uint32_t k = 0;
+        while (k < MAX_GRUPO && U16(&datos_[lista + 2 * k]) != numero)
+            ++k;
+        if (k == MAX_GRUPO)
+            return false;
+        for (; k + 1 < MAX_GRUPO; ++k)
+            PonU16(&datos_[lista + 2 * k], U16(&datos_[lista + 2 * (k + 1)]));
+        PonU16(&datos_[lista + 2 * (MAX_GRUPO - 1)], 0);
+        uint32_t miembros = 0;
+        for (uint32_t m = 0; m < MAX_GRUPO; ++m)
+            if (U16(&datos_[lista + 2 * m]))
+                ++miembros;
+        datos_[oJugador + OFF_DORSAL] = 0;
+        datos_[oJugador + OFF_SITIO] = 0;
         datos_[base_ + OFF_NUM_GRUPO] = static_cast<uint8_t>(miembros);
         return true;
     }

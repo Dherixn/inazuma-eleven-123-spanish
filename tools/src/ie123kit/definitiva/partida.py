@@ -246,21 +246,51 @@ class Partida:
         o = self.base + self.formato.off_grupo
         return [struct.unpack_from("<H", self.datos, o + 2 * k)[0] for k in range(MAX_GRUPO)]
 
+    def _sembrar_grupo(self) -> None:
+        """Lista vacía con grupo (IE3 tras el prólogo): el grupo son los primeros registros (tantos como el
+        resumen). Se escriben antes de tocarla para no sacar a nadie."""
+        if any(self.grupo()):
+            return
+        for k in range(min(self.datos[self.base + OFF_NUM_GRUPO], MAX_GRUPO, self.num_jugadores)):
+            n = struct.unpack_from("<H", self.datos, self._off_jugador(k) + 4)[0]
+            struct.pack_into("<H", self.datos, self.base + self.formato.off_grupo + 2 * k, n)
+
+    def grupo_efectivo(self) -> list[int]:
+        """Números del grupo tal como los ve el juego (con la lista vacía, los primeros registros)."""
+        numeros = [n for n in self.grupo() if n]
+        if numeros or not self.formato.off_grupo:
+            return numeros
+        cuantos = min(self.datos[self.base + OFF_NUM_GRUPO], MAX_GRUPO, self.num_jugadores)
+        return [struct.unpack_from("<H", self.datos, self._off_jugador(k) + 4)[0] for k in range(cuantos)]
+
+    def sacar_del_grupo(self, indice: int) -> bool:
+        """Pasa al jugador a la reserva: fuera de la lista (los de detrás suben), dorsal y sitio a 0. Gemelo de
+        ``Partida::SacarDelGrupo``."""
+        if not self.formato.off_grupo:
+            return False
+        self._sembrar_grupo()
+        lista = self.grupo()
+        o_jugador = self._off_jugador(indice)
+        numero = struct.unpack_from("<H", self.datos, o_jugador + 4)[0]
+        if numero not in lista:
+            return False
+        k = lista.index(numero)
+        lista = lista[:k] + lista[k + 1:] + [0]
+        for m, n in enumerate(lista):
+            struct.pack_into("<H", self.datos, self.base + self.formato.off_grupo + 2 * m, n)
+        self.datos[o_jugador + OFF_DORSAL] = 0
+        self.datos[o_jugador + OFF_SITIO] = 0
+        self.datos[self.base + OFF_NUM_GRUPO] = sum(1 for n in lista if n)
+        return True
+
     def meter_en_grupo(self, indice: int) -> bool:
         """Mete al jugador ``indice`` en el grupo si cabe (como un fichaje del juego con sitio): primer
         hueco de la lista, el dorsal libre más bajo y el sitio siguiente. False si no cabe o el formato no
         tiene el grupo localizado. Gemelo de ``Partida::MeterEnGrupo``."""
-        lista = self.grupo()
-        if not lista:
+        if not self.formato.off_grupo:
             return False
-        if not any(lista) and self.datos[self.base + OFF_NUM_GRUPO]:
-            # Lista vacía con grupo (IE3 tras el prólogo): el grupo son los primeros registros. Se escriben
-            # antes de añadir para no sacar a nadie.
-            cuantos = min(self.datos[self.base + OFF_NUM_GRUPO], MAX_GRUPO, self.num_jugadores)
-            for k in range(cuantos):
-                n = struct.unpack_from("<H", self.datos, self._off_jugador(k) + 4)[0]
-                struct.pack_into("<H", self.datos, self.base + self.formato.off_grupo + 2 * k, n)
-            lista = self.grupo()
+        self._sembrar_grupo()
+        lista = self.grupo()
         o_jugador = self._off_jugador(indice)
         numero = struct.unpack_from("<H", self.datos, o_jugador + 4)[0]
         if numero in lista:

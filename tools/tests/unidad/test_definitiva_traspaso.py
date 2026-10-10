@@ -296,3 +296,22 @@ def test_traspaso_al_ie3_quita_al_fichado_el_equipo_y_las_ordenes_del_capitan():
     assert [reg[o] for o in (0x4B, 0x57, 0x58, 0x5A, 0x5B)] == [1, 1, 0, 0, 0x10]
     assert ie3.grupo()[:3] == [3170, 1, 0] and ie3.datos[ie3.base + pt.OFF_NUM_GRUPO] == 2
     assert informe.al_grupo == [1]
+
+
+def test_sacar_del_grupo_sube_a_los_de_detras_y_limpia_dorsal_y_sitio():
+    p = _partida("ie2.123", [(n, 10, 5000, []) for n in (1, 2, 3, 4)])
+    _con_grupo(p, [1, 2, 3, 4], [1, 2, 3, 4])
+    assert p.sacar_del_grupo(1)  # el número 2
+    reg = p.datos[p._off_jugador(1):p._off_jugador(1) + p.formato.jugador_paso]
+    assert p.grupo()[:4] == [1, 3, 4, 0] and (reg[pt.OFF_DORSAL], reg[pt.OFF_SITIO]) == (0, 0)
+    assert p.datos[p.base + pt.OFF_NUM_GRUPO] == 3
+    assert not p.sacar_del_grupo(1)  # ya está en la reserva
+
+
+def test_grupo_efectivo_con_la_lista_vacia_son_los_primeros_registros():
+    # Como el IE3 tras el prólogo: lista vacía y resumen 1 (Mark).
+    p = _partida("ie3.123", [(1, 1, 0, []), (30, 18, 2000, [])])
+    p.datos[p.base + pt.OFF_NUM_GRUPO] = 1
+    assert p.grupo_efectivo() == [1]
+    assert p.meter_en_grupo(1) and p.grupo_efectivo() == [1, 30]
+    assert p.sacar_del_grupo(0) and p.grupo_efectivo() == [30]

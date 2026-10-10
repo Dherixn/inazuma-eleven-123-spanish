@@ -54,8 +54,8 @@ static std::vector<uint16_t> Altas(const LectorFA &fa, const char *nombre, std::
 }
 
 static void Pares(const char *nombre, const JuegoDatos &origen, const JuegoDatos &destino,
-                  const std::vector<uint16_t> &altas) {
-    for (const auto &p : PreferirAltas(EmparejarPorCara(origen, destino), destino, altas))
+                  const std::vector<uint16_t> &altas, const char *juegoO, const char *juegoD) {
+    for (const auto &p : AjustarAiden(PreferirAltas(EmparejarPorCara(origen, destino), destino, altas), juegoO, juegoD))
         std::printf("PAR %s %u %u\n", nombre, p.origen, p.destino);
 }
 
@@ -75,10 +75,10 @@ int main(int argc, char **argv) {
     std::vector<uint16_t> a2 = Altas(fa, "IE2", {"inazuma2/data_iz/script", "inazuma2/data_iz_blizzard/script"});
     std::vector<uint16_t> a3 = Altas(fa, "IE3", {"inazuma3/data_iz/script"});
     std::vector<uint16_t> ao = Altas(fa, "OGRO", {"inazuma3_ogre/data_iz/script"});
-    Pares("IE1_IE2", ie1, ie2, a2);
-    Pares("IE2_IE3", ie2, ie3, a3);
-    Pares("IE2_OGRO", ie2, ogro, ao);
-    Pares("IE3_OGRO", ie3, ogro, ao);
+    Pares("IE1_IE2", ie1, ie2, a2, "inazuma1", "inazuma2");
+    Pares("IE2_IE3", ie2, ie3, a3, "inazuma2", "inazuma3");
+    Pares("IE2_OGRO", ie2, ogro, ao, "inazuma2", "inazuma3_ogre");
+    Pares("IE3_OGRO", ie3, ogro, ao, "inazuma3", "inazuma3_ogre");
     Volcar("IE2", ie2);
     Volcar("IE3", ie3);
     Volcar("OGRO", ogro);

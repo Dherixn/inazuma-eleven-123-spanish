@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <utility>
+#include <string>
 #include <vector>
 
 #include "Traspaso.hpp"
@@ -79,5 +80,12 @@ namespace Definitiva {
     // no la 1097 de su cara del IE2. Gemelo de identidades.preferir_altas.
     std::vector<Par> PreferirAltas(const std::vector<Par> &pares, const JuegoDatos &destino,
                                    const std::vector<uint16_t> &altas);
+
+    // Aiden Froste (edición definitiva): su número en cada juego ("inazuma2" 1307; IE3 y Ogro, la ficha 2337 de
+    // Shawn) o 0. Ver tools/src/ie123kit/definitiva/aiden.py.
+    uint16_t NumeroAiden(const std::string &juego);
+    // En el IE3 Aiden no tiene cara propia: su par se pone a mano, y nadie más puede caer en su ficha (un Shawn
+    // que llegara ahí va al 2338, el que ficha la historia). Gemelo de aiden.ajustar_mapa.
+    std::vector<Par> AjustarAiden(const std::vector<Par> &pares, const std::string &origen, const std::string &destino);
 
 }

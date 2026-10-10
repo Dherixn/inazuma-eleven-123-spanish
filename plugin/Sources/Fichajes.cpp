@@ -45,8 +45,8 @@ namespace Definitiva {
             {"/ina3O_save.dat", "La amenaza del Ogro", &FORMATO_IE3, "inazuma3_ogre", &PERFIL_IE3, false},
         };
 
-        // Aiden Froste: su ficha es la única jugable con la cara 0x51B (ver tools/src/ie123kit/definitiva/aiden.py).
-        constexpr uint16_t CARA_AIDEN = 0x051B;
+        // Aiden Froste: su número en cada juego, NumeroAiden (IE2 1307; IE3 y Ogro, la ficha 2337 de Shawn; ver
+        // tools/src/ie123kit/definitiva/aiden.py).
         const uint16_t SHAWN[] = {2329, 2337, 2338};  // defensa, delantero y delantero completo (IE2 e IE3)
         constexpr uint16_t AULLIDO_DE_LOBO = 0x114;
 
@@ -58,11 +58,14 @@ namespace Definitiva {
             return teclado.Open() == 0;
         }
 
-        int NumeroDeAiden(const JuegoDatos &tablas) {
-            for (size_t i = 0; i < tablas.Fichas(); ++i)
-                if (tablas.Cara(i) == CARA_AIDEN && tablas.Jugable(i))
-                    return tablas.Numero(i);
-            return -1;
+        // Su número en ese juego, si su ficha lleva la capa de datos (nombre «Aiden...»); -1 si no.
+        int NumeroDeAiden(const JuegoDatos &tablas, const std::string &juego) {
+            uint16_t numero = NumeroAiden(juego);
+            int ficha = numero ? tablas.Ficha(numero) : -1;
+            if (ficha < 0 || !tablas.Jugable(static_cast<size_t>(ficha)))
+                return -1;
+            std::string nombre = DecodificarNombre(tablas.NombreCrudo(static_cast<size_t>(ficha)), tablas.AnchoNombre());
+            return nombre.compare(0, 5, "Aiden") == 0 ? numero : -1;
         }
 
         bool EsShawn(uint16_t numero) {
@@ -285,7 +288,7 @@ namespace Definitiva {
             const Juego &juego = *hay[eleccion];
 
             const JuegoDatos *tablas = TablasDe(juego.tablas, *juego.perfil);
-            int numero = tablas ? NumeroDeAiden(*tablas) : -1;
+            int numero = tablas ? NumeroDeAiden(*tablas, juego.tablas) : -1;
             if (numero < 0) {
                 Aviso("Este archive.fa no tiene a Aiden: falta la capa de datos de la edición definitiva.");
                 return;
@@ -300,7 +303,7 @@ namespace Definitiva {
             bool superado = !juego.esIE2;
             for (uint32_t k = 0; k < partida.NumJugadores(); ++k) {
                 JugadorPartida j = partida.Jugador(k);
-                if (!EsShawn(j.id))
+                if (!EsShawn(j.id) || j.id == numero)  // en el IE3, Aiden ocupa la ficha 2337 de Shawn
                     continue;
                 if (shawn < 0 || j.nivel > partida.Jugador(shawn).nivel)
                     shawn = static_cast<int>(k);
@@ -353,6 +356,80 @@ namespace Definitiva {
 
     }
 
+    namespace {
+
+        // El menú del juego no deja pasar a nadie de la reserva al grupo (al menos al principio de IE2 e IE3):
+        // esto lo hace sobre la partida, como el traspaso.
+        void GrupoYReserva(MenuEntry *) {
+            Elegida e;
+            std::vector<u8> datos;
+            if (!ElegirPartida(e, datos))
+                return;
+            Partida partida;
+            if (!partida.Cargar(datos, e.formato, e.espacio) || !e.formato->offGrupo) {
+                Aviso("En este juego no se puede cambiar el grupo desde aquí.");
+                return;
+            }
+            std::vector<uint16_t> grupo = partida.Grupo();
+            auto enGrupo = [&grupo](uint16_t n) { return std::find(grupo.begin(), grupo.end(), n) != grupo.end(); };
+            auto etiqueta = [&](uint32_t k) {
+                JugadorPartida j = partida.Jugador(k);
+                return Utils::Format("%s (nivel %u)", NombreDeJugador(e.tablas, *e.perfil, j.id).c_str(), j.nivel);
+            };
+            std::vector<uint32_t> reserva, delGrupo;
+            std::vector<std::string> nombresReserva, nombresGrupo;
+            for (uint32_t k = 0; k < partida.NumJugadores(); ++k) {
+                if (enGrupo(partida.Jugador(k).id)) {
+                    delGrupo.push_back(k);
+                    nombresGrupo.push_back(etiqueta(k));
+                } else {
+                    reserva.push_back(k);
+                    nombresReserva.push_back(etiqueta(k));
+                }
+            }
+            if (reserva.empty()) {
+                Aviso("No hay nadie en la reserva: todo tu equipo está en el grupo.");
+                return;
+            }
+            Keyboard eleccion(Ajustar(Utils::Format("Grupo: %u de %u. ¿Quién pasa de la reserva al grupo?",
+                                                    static_cast<unsigned>(grupo.size()),
+                                                    static_cast<unsigned>(MAX_GRUPO))),
+                              nombresReserva);
+            int r = eleccion.Open();
+            if (r < 0)
+                return;
+            uint32_t entra = reserva[static_cast<size_t>(r)];
+            int sale = -1;
+            if (grupo.size() >= MAX_GRUPO) {
+                Keyboard quien(Ajustar("El grupo está lleno. ¿Quién pasa a la reserva?"), nombresGrupo);
+                int s = quien.Open();
+                if (s < 0)
+                    return;
+                sale = static_cast<int>(delGrupo[static_cast<size_t>(s)]);
+            }
+            std::string copia;
+            if (CopiarPartidasASD(gCarpetaCopias, copia) <= 0) {
+                Aviso("No se ha podido hacer la copia de seguridad en la SD. No se ha tocado nada.");
+                return;
+            }
+            if ((sale >= 0 && !partida.SacarDelGrupo(static_cast<uint32_t>(sale))) || !partida.MeterEnGrupo(entra)) {
+                Aviso("No se ha podido cambiar el grupo. No se ha tocado nada.");
+                return;
+            }
+            if (partida.Sellar() != Error::Ninguno || !EscribirPartida(e.archivo, partida.Datos())) {
+                Aviso(Utils::Format("No se ha podido guardar. Tu partida sigue como estaba (copia en %s).", copia.c_str()));
+                return;
+            }
+            std::string texto = NombreDeJugador(e.tablas, *e.perfil, partida.Jugador(entra).id) + " entra en el grupo";
+            if (sale >= 0)
+                texto += " y " + NombreDeJugador(e.tablas, *e.perfil, partida.Jugador(static_cast<uint32_t>(sale)).id) +
+                         " pasa a la reserva";
+            Aviso(Utils::Format("%s.\nCopia: %s\n\nSal al título de %s SIN GUARDAR y pulsa Continuar.", texto.c_str(),
+                                copia.c_str(), e.nombre));
+        }
+
+    }
+
     MenuFolder *CrearMenuFichajes(const char *carpetaCopias) {
         gCarpetaCopias = carpetaCopias;
         MenuFolder *carpeta = new MenuFolder("Fichajes especiales", "Jugadores que el juego original no deja fichar.");
@@ -367,6 +444,10 @@ namespace Definitiva {
                                   Ajustar("Busca por nombre a cualquier jugador del juego y fíchalo, también los que "
                                           "solo se conseguían por Wi-Fi o StreetPass. Opcional: hace el juego más "
                                           "fácil."));
+        *carpeta += new MenuEntry("Grupo y reserva", nullptr, GrupoYReserva,
+                                  Ajustar("Pasa a un jugador de la reserva al grupo (los 16 que juegan) y, si está "
+                                          "lleno, elige quién sale. El menú del juego no lo deja hacer al principio "
+                                          "del IE2 y del IE3."));
         return carpeta;
     }
 

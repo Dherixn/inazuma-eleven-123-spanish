@@ -19,7 +19,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from ie123kit.definitiva import datos_juego, fichas, identidades, partida, traspaso
+from ie123kit.definitiva import aiden, datos_juego, fichas, identidades, partida, traspaso
 
 
 def _cargar(carpeta: Path, perfil: fichas.Perfil) -> list[identidades.Jugador]:
@@ -94,7 +94,7 @@ def _traspasar(args: argparse.Namespace) -> int:
     else:
         print("aviso: sin los eventos del juego de destino (--fa o inazumaN/data_iz/script en --logica); "
               "el traspaso no puede saber qué ficha vuelve a fichar la historia")
-    mapa = datos_juego.mapa_de_numeros(por_ficha, datos_o, datos)
+    mapa = aiden.ajustar_mapa(datos_juego.mapa_de_numeros(por_ficha, datos_o, datos), j_o, j_d)
     op = traspaso.Opciones(
         modo=args.modo,
         nivel_tope=args.nivel if args.modo == traspaso.EQUILIBRADA else None,

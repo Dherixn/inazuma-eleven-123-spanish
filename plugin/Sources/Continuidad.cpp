@@ -148,6 +148,7 @@ namespace Definitiva {
             // duplicados cuando lo convoque.
             if (const std::vector<uint16_t> *altas = AltasDe(destino.juego))
                 pares = PreferirAltas(pares, *tablasDestino, *altas);
+            pares = AjustarAiden(pares, elegido->juego, destino.juego);
             Mapa mapa = {pares.data(), pares.size()};
 
             Opciones op;

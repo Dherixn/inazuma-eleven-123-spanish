@@ -239,4 +239,31 @@ namespace Definitiva {
         return salida;
     }
 
+    uint16_t NumeroAiden(const std::string &juego) {
+        if (juego == "inazuma2")
+            return 1307;
+        if (juego == "inazuma3" || juego == "inazuma3_ogre")
+            return 2337;
+        return 0;
+    }
+
+    std::vector<Par> AjustarAiden(const std::vector<Par> &pares, const std::string &origen, const std::string &destino) {
+        constexpr uint16_t SHAWN_HISTORIA_IE3 = 2338;
+        const uint16_t aidenO = NumeroAiden(origen), aidenD = NumeroAiden(destino);
+        std::vector<Par> salida;
+        for (Par p : pares) {
+            if (p.destino == aidenD && p.origen != aidenO && destino != "inazuma2")
+                p.destino = SHAWN_HISTORIA_IE3;
+            if (p.origen != aidenO || !aidenD)
+                salida.push_back(p);
+        }
+        if (aidenO && aidenD) {
+            Par aiden = {aidenO, aidenD};
+            auto donde = std::lower_bound(salida.begin(), salida.end(), aiden,
+                                          [](const Par &a, const Par &b) { return a.origen < b.origen; });
+            salida.insert(donde, aiden);
+        }
+        return salida;
+    }
+
 }
