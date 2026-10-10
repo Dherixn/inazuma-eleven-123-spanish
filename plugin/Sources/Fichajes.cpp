@@ -560,6 +560,51 @@ namespace Definitiva {
 
     }
 
+    void FicharACanon() {
+        constexpr uint16_t CANON = 2470, MARK = 1;
+        Elegida e;
+        std::vector<u8> datos;
+        if (!ElegirPartida(e, datos))
+            return;
+        const JuegoDatos *t = TablasDe(e.tablas, *e.perfil);
+        int ficha = t ? t->Ficha(CANON) : -1;
+        if (ficha < 0 || !t->Jugable(static_cast<size_t>(ficha))) {
+            Aviso("La carta habla de un tal Canon, pero en este juego no aparece por ningún sitio.");
+            return;
+        }
+        Partida partida;
+        partida.Cargar(datos, e.formato, e.espacio);
+        u8 nivel = 0;
+        for (u32 k = 0; k < partida.NumJugadores(); ++k)
+            if (partida.Jugador(k).id == MARK)
+                nivel = partida.Jugador(k).nivel;
+        if (!nivel) {
+            Aviso("«Primero tengo que encontrar a mi bisabuelo...» Vuelve cuando Mark esté en tu equipo.");
+            return;
+        }
+        Opciones op;
+        t->Preparar(op);
+        std::string copia;
+        if (CopiarPartidasASD(gCarpetaCopias, copia) <= 0) {
+            Aviso("No se ha podido hacer la copia de seguridad en la SD. No se ha tocado nada.");
+            return;
+        }
+        Fichaje f = Fichar(partida, CANON, nivel, op);
+        if (f == Fichaje::YaEsta) {
+            Aviso("«¡Ya estoy aquí, capitán!» Canon ya juega en tu equipo.");
+            return;
+        }
+        if (f != Fichaje::Hecho || partida.Sellar() != Error::Ninguno || !EscribirPartida(e.archivo, partida.Datos())) {
+            Aviso(f == Fichaje::SinSitio ? "No cabe nadie más en el equipo." : "No se ha podido guardar.");
+            return;
+        }
+        Aviso("Entre las páginas hay una carta con matasellos de dentro de ochenta años:\n\n"
+              "«Bisabuelo... ¡digo, capitán! He venido a jugar contigo.»");
+        Aviso(Utils::Format("Canon Evans se une al equipo con el nivel de Mark (%u).\n%s\nCopia: %s\n\n"
+                            "Sal al título de %s SIN GUARDAR y pulsa Continuar.",
+                            nivel, DondeVa(partida, CANON), copia.c_str(), e.nombre));
+    }
+
     MenuFolder *CrearMenuFichajes(const char *carpetaCopias) {
         gCarpetaCopias = carpetaCopias;
         MenuFolder *carpeta = new MenuFolder("Fichajes especiales", "Jugadores que el juego original no deja fichar.");

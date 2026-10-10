@@ -108,4 +108,4 @@ en `/luma/titles/00040000000BB800/` y el plugin en `/luma/plugins/00040000000BB8
 - Revisar con el equipo de la traducción los títulos acortados (#14).
 
 Hallazgos de 3DS: [HALLAZGOS_3DS.md](HALLAZGOS_3DS.md). De las ROM de DS: [HALLAZGOS_NDS.md](HALLAZGOS_NDS.md).
-Peticiones de la comunidad: [PETICIONES.md](PETICIONES.md).
+Peticiones de la comunidad: [PETICIONES.md](PETICIONES.md). Secretos (con destripes, para quien mantenga el proyecto): [SECRETOS.md](SECRETOS.md).

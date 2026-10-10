@@ -23,15 +23,16 @@ namespace Definitiva {
             const char *archivo;
             const char *version;
             const FormatoPartida *formato;
+            u32 saga;  // bit de su saga: IE1, IE2, IE3, Ogro
         };
 
         const Temporada TEMPORADAS[] = {
-            {"Temporada 1 · El Fútbol Frontier", "/ina1_save.dat", "Inazuma Eleven", &FORMATO_IE1},
-            {"Temporada 2 · La invasión", "/ina2F_save.dat", "Tormenta de Fuego", &FORMATO_IE2},
-            {"Temporada 2 · La invasión", "/ina2B_save.dat", "Ventisca Eterna", &FORMATO_IE2},
-            {"Temporada 3 · El Mundial", "/ina3S_save.dat", "Rayo Celeste", &FORMATO_IE3},
-            {"Temporada 3 · El Mundial", "/ina3B_save.dat", "Fuego Explosivo", &FORMATO_IE3},
-            {"Epílogo · El Ogro", "/ina3O_save.dat", "La amenaza del Ogro", &FORMATO_IE3},
+            {"Temporada 1 · El Fútbol Frontier", "/ina1_save.dat", "Inazuma Eleven", &FORMATO_IE1, 1},
+            {"Temporada 2 · La invasión", "/ina2F_save.dat", "Tormenta de Fuego", &FORMATO_IE2, 2},
+            {"Temporada 2 · La invasión", "/ina2B_save.dat", "Ventisca Eterna", &FORMATO_IE2, 2},
+            {"Temporada 3 · El Mundial", "/ina3S_save.dat", "Rayo Celeste", &FORMATO_IE3, 4},
+            {"Temporada 3 · El Mundial", "/ina3B_save.dat", "Fuego Explosivo", &FORMATO_IE3, 4},
+            {"Epílogo · El Ogro", "/ina3O_save.dat", "La amenaza del Ogro", &FORMATO_IE3, 8},
         };
 
         u32 U32(const std::vector<u8> &d, u32 off) {
@@ -44,6 +45,7 @@ namespace Definitiva {
         std::string texto;
         u64 totalSegundos = 0;
         int jugadas = 0;
+        u32 sagas = 0;
         for (const Temporada &t : TEMPORADAS) {
             std::vector<u8> datos;
             if (!LeerPartida(t.archivo, datos))
@@ -69,6 +71,7 @@ namespace Definitiva {
             u32 segundos = mejorTiempo / 60;
             totalSegundos += segundos;
             ++jugadas;
+            sagas |= t.saga;
             texto += Utils::Format("%s\n  %s: episodio %u, nivel %u, %u jugadores, %luh %02lum\n", t.titulo, t.version,
                                    datos[base + OFF_EPISODIO], datos[base + OFF_NIVEL_EQUIPO], p.NumJugadores(),
                                    static_cast<unsigned long>(segundos / 3600),
@@ -77,7 +80,11 @@ namespace Definitiva {
         if (!jugadas)
             return "Aún no hay ninguna temporada empezada. ¡El balón te espera en la ribera del río!";
         texto += Utils::Format("\nEn total: %lluh %02llum de leyenda.", totalSegundos / 3600, totalSegundos / 60 % 60);
-        if (jugadas >= 4)
+        // Las cuatro sagas (Fuego y Ventisca, o Rayo Celeste y Fuego Explosivo, cuentan como una).
+        if (sagas == 0xF)
+            texto += "\n\nLA LEYENDA COMPLETA. Desde la ribera del río hasta el Ogro: el juego más largo de la historia "
+                     "de Inazuma Eleven. El abuelo estaría orgulloso. (Escribe «LEYENDA» en su cuaderno.)";
+        else if (jugadas >= 4)
             texto += "\nDesde el Fútbol Frontier hasta el último partido: esto ya es una leyenda.";
         return texto;
     }

@@ -4,6 +4,7 @@
 #include <ctime>
 #include <string>
 
+#include "Fichajes.hpp"
 #include "Nucleo/Texto.hpp"
 #include "PlantillaEnJuego.hpp"
 
@@ -152,6 +153,12 @@ namespace Definitiva {
                 Aviso("Cuaderno", "«Si estás leyendo esto, es que te gusta el fútbol tanto como a mí. Me alegro.»");
             } else if (p == "OGRO" || p == "OGRE") {
                 Aviso("Cuaderno", "La página está rasgada. Solo se lee: «...del futuro... 80 años... no os rindáis...»");
+            } else if (p == "LEYENDA") {
+                Aviso("Cuaderno", "La última hoja, que antes estaba en blanco, tiene ahora una sola línea:\n\n"
+                                  "«Tres temporadas, un mismo equipo, una sola leyenda. Gracias por llegar hasta aquí.»\n\n"
+                                  "Debajo, la firma de Daisuke... y otra más pequeña: «Mark».");
+            } else if (p == "CANON") {
+                FicharACanon();
             } else if (p == "LUIS") {
                 Aviso("Cuaderno", "«Gracias por traducirlo todo. Sin ti, esto seguiría en japonés.»");
             } else if (p == "INAZUMA" || p == "INAZUMAELEVEN") {
