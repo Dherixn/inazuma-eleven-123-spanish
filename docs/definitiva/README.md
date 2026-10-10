@@ -16,7 +16,7 @@ del IE1 al último del Ogro:
 |---|---|
 | Continuidad | Traer el equipo del IE1 a Tormenta de Fuego o Ventisca, del IE2 a Rayo Celeste, Fuego Explosivo u Ogro y del IE3 a Ogro. Modos: completa (cada uno con su nivel), equilibrada (nivel máximo) y solo fichajes (todos al mismo nivel). La EXP se recalcula con la curva del juego nuevo y las técnicas con su tabla de aprendizaje. Quien ya está en la partida mejora; a quien la historia del juego nuevo va a unir no se le crea ficha: llega con la historia y el plugin le devuelve su nivel, su EXP y sus técnicas al aparecer (la historia no pasa a nadie de la reserva al grupo); el resto, a la reserva. Copia de seguridad en la SD antes de escribir. Texto «Capítulo siguiente» que enlaza las historias. |
 | Continuidad → Crónica de la leyenda | Las partidas de los tres juegos vistas como temporadas: episodio, nivel del equipo, jugadores, horas y total. |
-| Fichajes especiales | Aiden Froste: en el IE2, cuando Shawn aprende «Aullido de lobo» (cuando deja de esconderse tras su hermano); en IE3 y Ogro, con Shawn en el equipo. Llega con el nivel de Shawn y pasa al IE3 con la Continuidad. «Fichaje libre» (ayuda, con aviso): busca por nombre a cualquier jugador jugable, también los de Wi-Fi o StreetPass, y lo ficha con el nivel que elijas. Si cabe, el fichado entra en el grupo (página 1 de Equipo). «Grupo y reserva»: pasa a cualquiera de la reserva al grupo (el menú del juego no deja al principio del IE2 y del IE3). «Recuperar jugadores»: vuelven, con su nivel y sus técnicas, los que la historia se ha llevado (sus bajas borran al jugador: en el IE3, Kevin, Max y David al no entrar en la selección). |
+| Fichajes especiales | Aiden Froste: en el IE2, cuando Shawn aprende «Aullido de lobo» (cuando deja de esconderse tras su hermano); en IE3 y Ogro, con Shawn en el equipo. Llega con el nivel de Shawn y pasa al IE3 con la Continuidad. «Fichaje libre» (ayuda, con aviso): busca por nombre a cualquier jugador jugable, también los de Wi-Fi o StreetPass, y lo ficha con el nivel que elijas. Si cabe, el fichado entra en el grupo (página 1 de Equipo). «Grupo y reserva»: pasa a cualquiera de la reserva al grupo (el menú del juego no deja al principio del IE2 y del IE3). «Contenido de StreetPass y Wi-Fi»: pone a 45 el contador de encuentros de la recopilación (imposibles en un emulador) y, al abrir el juego, el menú avisa y desbloquea los jugadores y objetos que en DS se repartían por Wi-Fi, en los tres juegos. «Recuperar jugadores»: vuelven, con su nivel y sus técnicas, los que la historia se ha llevado (sus bajas borran al jugador: en el IE3, Kevin, Max y David al no entrar en la selección). |
 | Ayudas | Encuentros (normal, menos, muy pocos, ninguno, más), velocidad al andar, supertécnicas del rival (dificultad), penaltis de la CPU (IE3 y Ogro), precio de venta, fuera de juego, versión (exclusivos de la otra), PE y PT siempre llenos (también dentro del partido), experiencia x2/x3. De fábrica, todo como el original salvo la memoria del equipo; se guardan en la SD. «Memoria del equipo» (activada de fábrica: es la continuidad) recuerda lo que llega a tener cada jugador de la partida, en `equipo_<identificador>.txt`: quien llega con la historia tras un traspaso recupera lo suyo, y quien la historia se lleva y vuelve a traer vuelve como se fue (#13: Shawn tras el partido contra Corea). «Recuperar técnicas perdidas» devuelve técnicas a mano. |
 | Partidas | Ver los archivos de partida y copiarlos a la SD. |
 | (secreto) | Dicen que el abuelo Daisuke dejó un cuaderno... |
@@ -87,6 +87,9 @@ en `/luma/titles/00040000000BB800/` y el plugin en `/luma/plugins/00040000000BB8
   Celeste con aplazados: 10 llegan con la historia, 8 a la reserva, y la memoria que escribe el plugin es
   igual a la de la CLI. Mark creado por la historia a nivel 5 vuelve a su nivel 25 con su EXP en cuanto
   aparece; «Recuperar jugadores» trae a Kevin con su nivel y sus técnicas.
+- «Contenido de StreetPass y Wi-Fi»: con el contador a 45, al volver a abrir el juego salen los 27 avisos
+  (IE1 desde 3 encuentros y el capítulo 3; IE2 «ambas versiones»; IE3 «todas las versiones») y «Has
+  desbloqueado todos los personajes y objetos».
 - Saltos de los eventos de la traducción 3.0 contra el japonés (`python -m ie123kit.definitiva saltos`): unos
   768 000 en IE1, IE2 (Fuego y Ventisca), IE3 y Ogro, todos a su sitio. El atasco del sorteo del FFI (#107 de la
   traducción) ya no está en la base.
@@ -96,7 +99,7 @@ en `/luma/titles/00040000000BB800/` y el plugin en `/luma/plugins/00040000000BB8
 - Partida larga de prueba: pasar por los tres juegos de principio a fin en la AYN Thor.
 - Convocatoria de Inazuma Japón con traspasados, en una partida de verdad (con eventos de prueba ya se ha
   visto lo que hacen las altas y las bajas).
-- Objetos y condiciones del contenido de Wi-Fi o StreetPass (#8, #10); los jugadores ya se pueden fichar.
+- Ver en una partida que los jugadores y objetos desbloqueados por StreetPass aparecen desde su capítulo (#8, #10).
 - Revisar con el equipo de la traducción los títulos acortados (#14).
 
 Hallazgos de 3DS: [HALLAZGOS_3DS.md](HALLAZGOS_3DS.md). De las ROM de DS: [HALLAZGOS_NDS.md](HALLAZGOS_NDS.md).

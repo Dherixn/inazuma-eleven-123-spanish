@@ -100,6 +100,22 @@ esto copia datos del juego al repositorio: son posiciones, tamaños y comportami
 - Bajas de la historia del IE3: en la selección (32011850) Kevin, Max, David, Marvin, Shadow e Isaac; tras
   Corea (32041600) Shawn y Jordan (Shawn vuelve después); en 32070100, Tod.
 
+## StreetPass y contenido de Wi-Fi
+
+- `Menu.sav` (24 B, el menú de la recopilación): +6 último juego elegido; **+8 u32, encuentros por StreetPass**;
+  +12, +16 y +20 (u32), cuántos avisos de desbloqueo ha dado ya el menú de IE1, IE2 e IE3 (9, 9 y 8 con todo).
+- Al abrir el juego, el menú compara el contador con los umbrales y avisa uno a uno: «N o más encuentros por
+  StreetPass: Inazuma Eleven. Has desbloqueado sus personajes. Desde el capítulo X podrás conseguirlos en tu
+  partida». El IE1 empieza en 3 (capítulo 3) y acaba en 43 («personajes y objetos, tras acabar la historia»);
+  luego el IE2 (ambas versiones) y el IE3 (todas las versiones). Con 45: los 27 avisos y «Has desbloqueado todos
+  los personajes y objetos». Sin conexión, el contador no pasa de 0 en un emulador.
+- El menú guarda su copia de `Menu.sav` al elegir un juego: tras cambiar el archivo hay que cerrar el juego.
+- Lo que desbloquea en el IE3 incluye `premium_item.dat` (19 entradas de 36 B: objeto, 1 y hasta 8 pares
+  número de jugador, nivel): manuales de The Earth, Gungnir, Procyon Net, Rock Wall Dam, Neo Galaxy, Drill
+  Smasher, Triple Dash y Death Zone 2, uniformes Gemini, Epsilon, Genesis y Caos, y billetes de Ura-Zeus y
+  Genesis. Sus nombres siguen en japonés en `item.dat` (registros de 44 B, desofuscados uno a uno con
+  `fichas.desofuscar`; nombre de 29 B al principio).
+
 ## Identificar una partida
 
 - Cabecera del archivo, +0x20: un identificador de 32 bits que no cambia desde que se crea el archivo (ni con

@@ -514,6 +514,52 @@ namespace Definitiva {
 
     }
 
+    namespace {
+
+        // La recopilación desbloquea lo que en DS se repartía por Wi-Fi con encuentros por StreetPass (45 para todo:
+        // jugadores de los tres juegos y objetos), imposibles en un emulador. El contador está en Menu.sav: u32 en
+        // +8 (en +12, +16 y +20, cuántos avisos de IE1, IE2 e IE3 ha dado ya el menú). Con 45, al abrir el juego
+        // el menú de la recopilación avisa y lo desbloquea, como en la consola (docs/definitiva/HALLAZGOS_3DS.md).
+        constexpr u32 OFF_ENCUENTROS = 8, ENCUENTROS_TODO = 45;
+
+        void ContenidoStreetPass(MenuEntry *) {
+            std::vector<u8> menu;
+            if (!LeerPartida("/Menu.sav", menu) || menu.size() < OFF_ENCUENTROS + 4) {
+                Aviso("No se encuentra Menu.sav: entra antes una vez en el menú de la recopilación.");
+                return;
+            }
+            u32 actual = menu[OFF_ENCUENTROS] | menu[OFF_ENCUENTROS + 1] << 8 | menu[OFF_ENCUENTROS + 2] << 16
+                         | static_cast<u32>(menu[OFF_ENCUENTROS + 3]) << 24;
+            if (actual >= ENCUENTROS_TODO) {
+                Aviso("Ya está desbloqueado: el contador de StreetPass llega a 45.");
+                return;
+            }
+            // Corto: el cuadro de la pregunta tiene siete líneas.
+            if (!Preguntar(Utils::Format("En la consola se desbloquea con 45 encuentros por StreetPass (llevas %lu): "
+                                         "jugadores de los tres juegos y objetos. Pone el contador a 45 y cierra el "
+                                         "juego; al abrirlo, el menú de la recopilación te avisa. Si estás jugando, "
+                                         "guarda antes. ¿Seguir?",
+                                         static_cast<unsigned long>(actual))))
+                return;
+            std::string copia;
+            if (CopiarPartidasASD(gCarpetaCopias, copia) <= 0) {
+                Aviso("No se ha podido hacer la copia de seguridad en la SD. No se ha tocado nada.");
+                return;
+            }
+            for (u32 k = 0; k < 4; ++k)
+                menu[OFF_ENCUENTROS + k] = static_cast<u8>(ENCUENTROS_TODO >> (8 * k));
+            if (!EscribirPartida("/Menu.sav", menu)) {
+                Aviso(Utils::Format("No se ha podido guardar (copia en %s).", copia.c_str()));
+                return;
+            }
+            // El menú de la recopilación guarda su copia de Menu.sav al elegir un juego: hay que cerrar ya.
+            Aviso("Hecho. El juego se cierra ahora: ábrelo de nuevo y el menú de la recopilación te avisará de todo "
+                  "lo desbloqueado.");
+            Process::ReturnToHomeMenu();
+        }
+
+    }
+
     MenuFolder *CrearMenuFichajes(const char *carpetaCopias) {
         gCarpetaCopias = carpetaCopias;
         MenuFolder *carpeta = new MenuFolder("Fichajes especiales", "Jugadores que el juego original no deja fichar.");
@@ -532,6 +578,10 @@ namespace Definitiva {
                                   Ajustar("Pasa a un jugador de la reserva al grupo (los 16 que juegan) y, si está "
                                           "lleno, elige quién sale. El menú del juego no lo deja hacer al principio "
                                           "del IE2 y del IE3."));
+        *carpeta += new MenuEntry("Contenido de StreetPass y Wi-Fi", nullptr, ContenidoStreetPass,
+                                  Ajustar("Desbloquea lo que se repartía por Wi-Fi (jugadores de los tres juegos y "
+                                          "objetos), que en la recopilación pide 45 encuentros por StreetPass: "
+                                          "imposibles en un emulador."));
         *carpeta += new MenuEntry("Recuperar jugadores", nullptr, RecuperarJugadores,
                                   Ajustar("Vuelven, con su nivel y sus técnicas, los jugadores que la historia se ha "
                                           "llevado (en el IE3, Kevin, Max y David al no entrar en la selección). "
