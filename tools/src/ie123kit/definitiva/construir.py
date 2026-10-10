@@ -15,7 +15,7 @@ import shutil
 from collections.abc import Callable
 from pathlib import Path
 
-from ie123kit.definitiva import aiden
+from ie123kit.definitiva import aiden, titulos
 from ie123kit.nucleo.contenedores.fa import FaArchive, reemplazar_entrada
 
 LIMITE = 2**31 - 1
@@ -52,6 +52,10 @@ def capa_definitiva(arc: FaArchive, codificar: Callable[[str], bytes] | None = N
         despues, ficha, numero = aiden.ie3(antes, codificar)
         cambios |= _cambios_de(juego, antes, despues)
         resumen.append(f"{juego}: Aiden Froste en la ficha {ficha}, número {numero}")
+    rpgtitle, saltados = titulos.corregir(arc.read(titulos.RUTA))
+    cambios[titulos.RUTA] = rpgtitle
+    resumen.append(f"inazuma2: {len(titulos.CAMBIOS) - len(saltados)} títulos de equipo acortados a {titulos.CASILLAS} casillas")
+    resumen += [f"  aviso: {s}" for s in saltados]
     return cambios, resumen
 
 
