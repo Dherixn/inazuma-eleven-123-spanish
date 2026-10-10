@@ -90,6 +90,9 @@ def montar(mod: Path, plugin: Path, salida: Path) -> list[str]:
         destino_plugin.mkdir(parents=True)
         shutil.copyfile(plugin, destino_plugin / "Definitiva.3gx")
         (salida / "LEEME.txt").write_text(LEEME.format(titulo=TITULO), encoding="utf-8")
+        guia = Path(__file__).resolve().parents[4] / "docs" / "definitiva" / "PRUEBA_THOR.md"
+        if guia.is_file():  # la guía de la prueba larga, junto al LÉEME
+            shutil.copyfile(guia, salida / "PRUEBA_THOR.md")
     except BaseException:
         shutil.rmtree(salida, ignore_errors=True)  # nada a medias: se puede volver a lanzar tal cual
         raise
