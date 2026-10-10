@@ -68,16 +68,16 @@ namespace Definitiva {
         return -1;
     }
 
-    bool LlenarPePt(uint8_t *pares) {
-        uint16_t a = U16(pares), b = U16(pares + 2), c = U16(pares + 4), d = U16(pares + 6);
-        uint16_t pe = a > c ? a : c, pt = b > d ? b : d;
-        if (a == pe && c == pe && b == pt && d == pt)
-            return false;
-        P16(pares, pe);
-        P16(pares + 2, pt);
-        P16(pares + 4, pe);
-        P16(pares + 6, pt);
-        return true;
+    bool LlenarPePt(uint8_t *actuales, const uint8_t *maximos) {
+        bool cambio = false;
+        for (int k = 0; k < 2; ++k) {
+            uint16_t actual = U16(actuales + 2 * k), maximo = U16(maximos + 2 * k);
+            if (actual < maximo) {
+                P16(actuales + 2 * k, maximo);
+                cambio = true;
+            }
+        }
+        return cambio;
     }
 
     uint32_t MultiplicadorExp::Aplicar(uint16_t numero, uint32_t exp, int factor, uint32_t tope) {

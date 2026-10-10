@@ -70,9 +70,9 @@ namespace Definitiva {
             for (u32 i = 0; i < n; ++i) {
                 u8 *r = reinterpret_cast<u8 *>(gBase + i * g.paso);
                 if (llenar) {
-                    u32 pares = gBase + g.offPePt + i * g.pasoPePt;
-                    if (Escribible(pares, 8))
-                        LlenarPePt(reinterpret_cast<u8 *>(pares));
+                    u32 maximos = gBase + g.offPePt + i * g.pasoPePt;
+                    if (TramoLegible(maximos, 4) == 4 && Escribible(reinterpret_cast<u32>(r) + OFF_PE_PT_ACTUALES, 4))
+                        LlenarPePt(r + OFF_PE_PT_ACTUALES, reinterpret_cast<const u8 *>(maximos));
                 }
                 u16 numero = static_cast<u16>(r[4] | r[5] << 8);
                 u32 exp = r[0] | r[1] << 8 | r[2] << 16 | static_cast<u32>(r[3]) << 24;

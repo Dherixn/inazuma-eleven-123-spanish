@@ -10,7 +10,9 @@
 //   IE2: registros cada 0xFC,  nivel en +0x4A, PE/PT en +0x70 del registro.
 //   IE3 y Ogro: registros cada 0x6C (los de la partida, seguidos), nivel en +0x4A; PE/PT aparte, en
 //   inicio + 0xCA6C + i * 0x98.
-// PE/PT son dos pares de u16 (actual y máximo, en un orden que no hace falta saber: ver LlenarPePt).
+// Los PE y PT actuales van en el propio registro, +0x34 (dos u16); en «PE/PT» de arriba están los máximos
+// (PE, PT y otro par que no se toca). Comprobado en el IE2 (Mark: actuales 37/41 en +0x34, máximos 75/85 en
+// +0x70, como enseña el menú) y en el IE3 (cambiar el primer par cambia el máximo que se ve).
 
 #include <cstddef>
 #include <cstdint>
@@ -20,11 +22,13 @@
 
 namespace Definitiva {
 
+    constexpr uint32_t OFF_PE_PT_ACTUALES = 0x34;  // en el registro, en los tres juegos
+
     struct GeometriaPlantilla {
         uint32_t paso;
         uint32_t offNivel;
         uint32_t maxJugadores;
-        uint32_t offPePt;   // desde el comienzo de la plantilla
+        uint32_t offPePt;   // máximos de PE y PT, desde el comienzo de la plantilla
         uint32_t pasoPePt;
     };
 
@@ -47,10 +51,8 @@ namespace Definitiva {
     long BuscarPlantilla(const uint8_t *zona, size_t largo, const GeometriaPlantilla &g, const JuegoDatos &t,
                          uint32_t minimo = 4);
 
-    // Deja los dos pares (actual y máximo) de PE y de PT con el mayor de cada uno: sin saber cuál es el
-    // actual, como el actual nunca pasa del máximo, el mayor es el máximo. 8 bytes: a, b, c, d (u16).
-    // Devuelve true si ha cambiado algo.
-    bool LlenarPePt(uint8_t *pares);
+    // Sube los PE y PT actuales (dos u16) hasta los máximos (dos u16). Nunca los baja. true si cambió algo.
+    bool LlenarPePt(uint8_t *actuales, const uint8_t *maximos);
 
     // Multiplica la EXP que se gana: recuerda la última EXP de cada jugador (por número) y, si ha subido,
     // suma (factor - 1) veces la subida, sin pasar de `tope`.

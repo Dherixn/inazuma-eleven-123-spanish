@@ -60,10 +60,12 @@ static void Sinteticos() {
     assert(ContarRegistros(&zona[inicio], zona.size() - inicio, g, t) == 2);
     assert(BuscarPlantilla(zona.data(), zona.size(), g, t) == -1);
 
-    uint8_t pares[8];
-    P16(pares, 30); P16(pares + 2, 50); P16(pares + 4, 66); P16(pares + 6, 106);
-    assert(LlenarPePt(pares) && pares[0] == 66 && pares[2] == 106 && pares[4] == 66 && pares[6] == 106);
-    assert(!LlenarPePt(pares));
+    uint8_t actuales[4], maximos[4];
+    P16(actuales, 37); P16(actuales + 2, 41); P16(maximos, 75); P16(maximos + 2, 85);
+    assert(LlenarPePt(actuales, maximos) && actuales[0] == 75 && actuales[2] == 85);
+    assert(!LlenarPePt(actuales, maximos));
+    P16(actuales, 90);  // nunca se baja
+    assert(LlenarPePt(actuales, maximos) == false && actuales[0] == 90);
 
     MultiplicadorExp m;
     assert(m.Aplicar(7, 1000, 2, 999999) == 1000);   // primera vez: solo se recuerda
