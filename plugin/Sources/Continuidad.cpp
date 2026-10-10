@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "Nucleo/Texto.hpp"
 #include "Nucleo/DatosDestino.hpp"
 #include "Nucleo/Partida.hpp"
 #include "Nucleo/Traspaso.hpp"
@@ -37,7 +38,7 @@ namespace Definitiva {
 
         constexpr uint32_t OFF_NIVEL_EQUIPO = 0x55;
 
-        void Aviso(const std::string &texto) { MessageBox("Continuidad", texto)(); }
+        void Aviso(const std::string &texto) { MessageBox("Continuidad", Ajustar(texto))(); }
 
         // Espacio del IE1 de origen: el jugador elige entre los que tienen partida válida.
         int ElegirEspacio(const std::vector<u8> &datos, const FormatoPartida &formato) {

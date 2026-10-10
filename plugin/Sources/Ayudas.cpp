@@ -9,6 +9,7 @@
 
 #include <3ds.h>
 
+#include "Nucleo/Texto.hpp"
 #include "Nucleo/TablaIni.hpp"
 
 using namespace CTRPluginFramework;
@@ -202,16 +203,16 @@ namespace Definitiva {
                 std::vector<std::string> opciones;
                 for (const Nivel &n : a.niveles)
                     opciones.push_back(n.nombre);
-                Keyboard teclado(std::string(a.titulo) + "\n\n" + a.nota, opciones);
+                Keyboard teclado(Ajustar(std::string(a.titulo) + "\n\n" + a.nota), opciones);
                 int r = teclado.Open();
                 if (r < 0 || r == a.elegido)
                     return;
                 a.elegido = r;
                 entrada->Name() = Nombre(a);
                 if (!Guardar())
-                    MessageBox("Ayudas", "No se ha podido guardar el ajuste en la SD; vale hasta que apagues.")();
+                    MessageBox("Ayudas", Ajustar("No se ha podido guardar el ajuste en la SD; vale hasta que apagues."))();
                 else if (SeLeeAlCargar(a))
-                    MessageBox("Ayudas", std::string("Hecho.") + CUANDO_CARGA)();
+                    MessageBox("Ayudas", Ajustar(std::string("Hecho.") + CUANDO_CARGA))();
                 return;
             }
         }
@@ -230,7 +231,7 @@ namespace Definitiva {
             std::string nota = a.nota;
             if (SeLeeAlCargar(a))
                 nota += CUANDO_CARGA;
-            a.entrada = new MenuEntry(Nombre(a), nullptr, Elegir, nota);
+            a.entrada = new MenuEntry(Nombre(a), nullptr, Elegir, Ajustar(nota));
             *carpeta += a.entrada;
         }
         return carpeta;

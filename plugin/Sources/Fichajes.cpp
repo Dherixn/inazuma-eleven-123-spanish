@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "Nucleo/Texto.hpp"
 #include "Nucleo/DatosDestino.hpp"
 #include "Nucleo/Partida.hpp"
 #include "Nucleo/Traspaso.hpp"
@@ -39,7 +40,7 @@ namespace Definitiva {
         const uint16_t SHAWN[] = {2329, 2337, 2338};  // defensa, delantero y delantero completo (IE2 e IE3)
         constexpr uint16_t AULLIDO_DE_LOBO = 0x114;
 
-        void Aviso(const std::string &texto) { MessageBox("Fichajes especiales", texto)(); }
+        void Aviso(const std::string &texto) { MessageBox("Fichajes especiales", Ajustar(texto))(); }
 
         int NumeroDeAiden(const JuegoDatos &tablas) {
             for (size_t i = 0; i < tablas.Fichas(); ++i)
@@ -72,9 +73,12 @@ namespace Definitiva {
                 Aviso("Aiden llega en el IE2 o el IE3: empieza uno de ellos y guarda una vez.");
                 return;
             }
+            // CTRPF parte las líneas por letras: los saltos van a mano, a 46 caracteres como mucho.
             Keyboard kb("Aiden Froste\n\n"
-                        "El hermano de Shawn, la voz que le pedía marcar siempre. Cuando Shawn deja de\n"
-                        "esconderse tras él (aprende «Aullido de lobo»), Aiden juega por fin a su lado.\n\n"
+                        "El hermano de Shawn, la voz que le pedía\n"
+                        "marcar siempre. Cuando Shawn deja de\n"
+                        "esconderse tras él (aprende «Aullido de\n"
+                        "lobo»), Aiden juega por fin a su lado.\n\n"
                         "¿En qué partida?",
                         nombres);
             int eleccion = kb.Open();
@@ -112,8 +116,9 @@ namespace Definitiva {
             }
             if (!superado) {
                 Aviso("Aiden todavía vive dentro de Shawn.\n\n"
-                      "Cuando Shawn aprenda «Aullido de lobo» y juegue siendo él mismo, Aiden podrá\n"
-                      "por fin salir al campo a su lado.");
+                      "Cuando Shawn aprenda «Aullido de lobo» y\n"
+                      "juegue siendo él mismo, Aiden podrá por fin\n"
+                      "salir al campo a su lado.");
                 return;
             }
             JugadorPartida hermano = partida.Jugador(static_cast<uint32_t>(shawn));
@@ -139,9 +144,11 @@ namespace Definitiva {
                 return;
             }
             Aviso(Utils::Format("«Hermano, esta vez jugamos los dos.»\n\n"
-                                "Aiden Froste se une al equipo con el nivel de Shawn (%u).\n"
-                                "Copia de seguridad: %s\n\n"
-                                "Para verlo, sal al título de %s SIN GUARDAR y pulsa Continuar.",
+                                "Aiden Froste se une al equipo con el\n"
+                                "nivel de Shawn (%u).\n"
+                                "Copia de seguridad en la SD:\n%s\n\n"
+                                "Para verlo, sal al título de %s\n"
+                                "SIN GUARDAR y pulsa Continuar.",
                                 hermano.nivel, copia.c_str(), juego.nombre));
         }
 
@@ -151,9 +158,12 @@ namespace Definitiva {
         gCarpetaCopias = carpetaCopias;
         MenuFolder *carpeta = new MenuFolder("Fichajes especiales", "Jugadores que el juego original no deja fichar.");
         *carpeta += new MenuEntry("Aiden Froste", nullptr, FicharAiden,
-                                  "El hermano de Shawn, delantero de Viento con «Ventisca eterna».\n"
-                                  "IE2: cuando Shawn aprende «Aullido de lobo». IE3 y Ogro: si Shawn está en el equipo.\n"
-                                  "Si lo fichas en el IE2, pasa al IE3 con la Continuidad.");
+                                  "El hermano de Shawn, delantero de Viento con\n"
+                                  "«Ventisca eterna».\n\n"
+                                  "IE2: cuando Shawn aprende «Aullido de lobo».\n"
+                                  "IE3 y Ogro: si Shawn está en el equipo.\n"
+                                  "Si lo fichas en el IE2, pasa al IE3 con la\n"
+                                  "Continuidad.");
         return carpeta;
     }
 
